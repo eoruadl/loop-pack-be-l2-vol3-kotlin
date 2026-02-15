@@ -15,8 +15,9 @@
 ## 서비스 흐름 예시
 
 ```
-1. [회원가입/로그인]
-   → 사용자가 계정 생성 또는 로그인
+1. [회원가입]
+   → 사용자가 회원가입
+   → 회원 기능 사용 시 헤더에 인증 정보 포함
 
 2. [상품 둘러보기]
    → 비회원도 브랜드 목록, 상품 목록 조회 가능
@@ -39,7 +40,7 @@
 ## 전체 기능 개요
 
 ### 유저 관리
-- 회원가입 및 로그인
+- 회원가입
 - 비회원도 브랜드/상품 조회 가능
 - 회원만 좋아요 및 주문 가능
 
@@ -90,8 +91,10 @@ X-Loopers-Ldap: {adminId}
 
 | Method | Endpoint | 설명 |
 |--------|----------|------|
-| POST | `/api/v1/users/signup` | 회원가입 |
-| POST | `/api/v1/users/login` | 로그인 |
+| POST | `/api/v1/users` | 회원가입 |
+| GET | `/api/v1/users/me` | 회원정보 조회 |
+| PUT | `/api/v1/users/password` | 비밀번호 변경 |
+
 
 ### 브랜드 & 상품 (Brands / Products)
 
@@ -100,6 +103,15 @@ X-Loopers-Ldap: {adminId}
 | GET | `/api/v1/brands/{brandId}` | 브랜드 정보 조회 |
 | GET | `/api/v1/products` | 상품 목록 조회 |
 | GET | `/api/v1/products/{productId}` | 상품 상세 조회 |
+
+**상품 목록 조회 시 파라미터**
+- `brandId`: 브랜드 ID (선택)
+- `page`: 페이지 번호 (기본값: 0)
+- `size`: 페이지 크기 (기본값: 20)
+- `sort`: 정렬 기준 (기본값: `latest`)
+  - `latest`: 최신순
+  - `price_asc`: 가격순
+  - `likes_desc`: 좋아요순
 
 ### 브랜드 & 상품 ADMIN
 
@@ -116,11 +128,28 @@ X-Loopers-Ldap: {adminId}
 | PUT | `/api-admin/v1/products/{productId}` | 상품 정보 수정 |
 | DELETE | `/api-admin/v1/products/{productId}` | 상품 삭제 |
 
+**브랜드 목록 조회 시 파라미터**
+- `page`: 페이지 번호 (기본값: 0)
+- `size`: 페이지 크기 (기본값: 20)
+
+**상품 목록 조회 시 파라미터**
+- `brandId`: 브랜드 ID (선택)
+- `page`: 페이지 번호 (기본값: 0)
+- `size`: 페이지 크기 (기본값: 20)
+- `sort`: 정렬 기준 (기본값: `latest`)
+  - `latest`: 최신순
+  - `price_asc`: 가격순
+  - `likes_desc`: 좋아요순
+
 ### 좋아요 (Likes)
 
 | Method | Endpoint | 설명 |
 |--------|----------|------|
-| POST | `/api/v1/likes/{productId}` | 좋아요 토글 (추가/취소) |
+| POST | `/api/v1/products/{productId}/likes` | 상품 좋아요 등록 |
+| DELETE | `/api/v1/products/{productId}/likes` | 상품 좋아요 취소 |
+| GET | `/api/v1/users/{userId}/likes` | 내가 좋아요한 상품 목록 조회 |
+
+- 좋아요 취소 시 Hard Delete
 
 ### 주문 (Orders)
 
@@ -130,6 +159,10 @@ X-Loopers-Ldap: {adminId}
 | GET | `/api/v1/orders` | 주문 목록 조회 |
 | GET | `/api/v1/orders/{orderId}` | 주문 상세 조회 |
 
+**주문 목록 조회 시 파라미터**
+- `startAt`: 조회 시작일 (YYYY-MM-DD)
+- `endAt`: 조회 종료일 (YYYY-MM-DD)
+
 ### 주문 ADMIN
 
 | Method | Endpoint | 설명 |
@@ -137,11 +170,25 @@ X-Loopers-Ldap: {adminId}
 | GET | `/api-admin/v1/orders` | 전체 주문 목록 조회 |
 | GET | `/api-admin/v1/orders/{orderId}` | 주문 상세 조회 |
 
+**주문 목록 조회 시 파라미터**
+- `page`: 페이지 번호 (기본값: 0)
+- `size`: 페이지 크기 (기본값: 20)
 
 ## 주요 비즈니스 규칙
+### 회원 관리
+- **회원가입 시**: 로그인 ID, 비밀번호, 이름, 생년월일, 이메일 필수 입력
+   - 로그인 ID는 영문과 숫자만 허용
+   - 비밀번호는 8자 이상 16자 이하의 영문 대소문자, 숫자, 특수문자만 가능
+   - 생년월일은 비밀번호 내에 포함될 수 없음
+
+- **내 정보 조회 시**: 로그인 ID, 이름, 생년월일, 이메일 반환
+   - 이름은 마지막 글자를 마스킹(*) 처리
+
+- **비밀번호 수정 시**: 기존 비밀번호, 새 비밀번호 입력
+   - 현재 비밀번호는 사용불가
 
 ### 브랜드 관리
-- **브랜드 삭제 시**: 브랜드를 삭제하면 해당 브랜드의 모든 상품도 함께 삭제됩니다.
+- **브랜드 삭제 시**: 브랜드를 삭제하면 해당 브랜드의 모든 상품도 함께 삭제(Soft Delete)됩니다.
 
 ### 상품 관리
 - **상품 등록 제약**: 상품을 등록할 때 해당 브랜드가 이미 등록되어 있어야 합니다.
