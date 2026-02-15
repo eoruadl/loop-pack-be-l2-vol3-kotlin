@@ -60,6 +60,7 @@ erDiagram
     PRODUCT_INVENTORY {
         BIGINT productId PK "NOT NULL"
         INT stock "NOT NULL"
+        DATETIME createdAt "NOT NULL"
         DATETIME updatedAt "NOT NULL"
     }
 
