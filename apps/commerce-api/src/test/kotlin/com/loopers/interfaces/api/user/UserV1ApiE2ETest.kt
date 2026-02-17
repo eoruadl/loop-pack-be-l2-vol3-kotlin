@@ -88,7 +88,7 @@ class UserV1ApiE2ETest @Autowired constructor(
             val existingUser = userJpaRepository.save(
                 UserModel(
                     loginId = LoginId("existinguser"),
-                    password = passwordEncryptor.encrypt("password123!"),
+                    encryptedPassword = passwordEncryptor.encrypt("password123!"),
                     name = Name("기존사용자"),
                     birthDate = BirthDate("1990-01-01"),
                     email = Email("existing@example.com"),
@@ -157,7 +157,7 @@ class UserV1ApiE2ETest @Autowired constructor(
             val user = userJpaRepository.save(
                 UserModel(
                     loginId = LoginId("testuser"),
-                    password = passwordEncryptor.encrypt(password),
+                    encryptedPassword = passwordEncryptor.encrypt(password),
                     name = Name("홍길동"),
                     birthDate = BirthDate("1990-01-01"),
                     email = Email("test@example.com"),
@@ -212,7 +212,7 @@ class UserV1ApiE2ETest @Autowired constructor(
             userJpaRepository.save(
                 UserModel(
                     loginId = LoginId("testuser"),
-                    password = passwordEncryptor.encrypt("password123!"),
+                    encryptedPassword = passwordEncryptor.encrypt("password123!"),
                     name = Name("홍길동"),
                     birthDate = BirthDate("1990-01-01"),
                     email = Email("test@example.com"),
@@ -272,7 +272,7 @@ class UserV1ApiE2ETest @Autowired constructor(
             val user = userJpaRepository.save(
                 UserModel(
                     loginId = LoginId("testuser"),
-                    password = passwordEncryptor.encrypt(oldPassword),
+                    encryptedPassword = passwordEncryptor.encrypt(oldPassword),
                     name = Name("홍길동"),
                     birthDate = BirthDate("1990-01-01"),
                     email = Email("test@example.com"),
@@ -313,7 +313,7 @@ class UserV1ApiE2ETest @Autowired constructor(
             userJpaRepository.save(
                 UserModel(
                     loginId = LoginId("testuser"),
-                    password = passwordEncryptor.encrypt(oldPassword),
+                    encryptedPassword = passwordEncryptor.encrypt(oldPassword),
                     name = Name("홍길동"),
                     birthDate = BirthDate("1990-01-01"),
                     email = Email("test@example.com"),
@@ -382,7 +382,7 @@ class UserV1ApiE2ETest @Autowired constructor(
             userJpaRepository.save(
                 UserModel(
                     loginId = LoginId("testuser"),
-                    password = passwordEncryptor.encrypt("password123!"),
+                    encryptedPassword = passwordEncryptor.encrypt("password123!"),
                     name = Name("홍길동"),
                     birthDate = BirthDate("1990-01-01"),
                     email = Email("test@example.com"),

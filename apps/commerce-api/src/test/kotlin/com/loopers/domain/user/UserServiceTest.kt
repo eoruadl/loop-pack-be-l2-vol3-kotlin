@@ -33,32 +33,32 @@ class UserServiceTest @Autowired constructor(
 
         @Test
         fun `유효한 정보로 생성하면 성공한다`() {
-            val loginId = LoginId("test1234")
-            val password = Password("test1234!@#$")
-            val name = Name("loopers")
-            val birthDate = BirthDate("2000-01-01")
-            val email = Email("test1234@loopers.com")
+            val loginId = "test1234"
+            val password = "Test1234!@#$"
+            val name = "loopers"
+            val birthDate = "2000-01-01"
+            val email = "test1234@loopers.com"
 
             val user = userService.createUser(loginId, password, name, birthDate, email)
 
             assertAll(
                 { assertThat(user.id).isGreaterThan(0) },
-                { assertThat(user.loginId).isEqualTo(loginId) },
-                { assertThat(user.password).isNotEqualTo(password.value) },
-                { assertThat(passwordEncryptor.matches(password.value, user.password)).isTrue() },
-                { assertThat(user.name).isEqualTo(name) },
-                { assertThat(user.birthDate).isEqualTo(birthDate) },
-                { assertThat(user.email).isEqualTo(email) },
+                { assertThat(user.loginId.value).isEqualTo(loginId) },
+                { assertThat(user.password).isNotEqualTo(password) },
+                { assertThat(passwordEncryptor.matches(password, user.password)).isTrue() },
+                { assertThat(user.name.value).isEqualTo(name) },
+                { assertThat(user.birthDate.value).isEqualTo(birthDate) },
+                { assertThat(user.email.value).isEqualTo(email) },
             )
         }
 
         @Test
         fun `비밀번호에 생년월일(8자리)이 포함되면 실패한다`() {
-            val loginId = LoginId("test1234")
-            val password = Password("test20000101!@#$")
-            val name = Name("loopers")
-            val birthDate = BirthDate("2000-01-01")
-            val email = Email("test1234@loopers.com")
+            val loginId = "test1234"
+            val password = "Test20000101!@#$"
+            val name = "loopers"
+            val birthDate = "2000-01-01"
+            val email = "test1234@loopers.com"
 
             val exception = assertThrows<CoreException> {
                 userService.createUser(loginId, password, name, birthDate, email)
@@ -69,11 +69,11 @@ class UserServiceTest @Autowired constructor(
 
         @Test
         fun `비밀번호에 생년월일(6자리)이 포함되면 실패한다`() {
-            val loginId = LoginId("test1234")
-            val password = Password("test000101!@#$")
-            val name = Name("loopers")
-            val birthDate = BirthDate("2000-01-01")
-            val email = Email("test1234@loopers.com")
+            val loginId = "test1234"
+            val password = "Test000101!@#$"
+            val name = "loopers"
+            val birthDate = "2000-01-01"
+            val email = "test1234@loopers.com"
 
             val exception = assertThrows<CoreException> {
                 userService.createUser(loginId, password, name, birthDate, email)
@@ -90,14 +90,14 @@ class UserServiceTest @Autowired constructor(
         @Test
         fun `존재하는 LoginId로 조회하면 성공한다`() {
             val user = userService.createUser(
-                LoginId("test1234"),
-                Password("test1234!@#$"),
-                Name("loopers"),
-                BirthDate("2000-01-01"),
-                Email("test1234@loopers.com"),
+                "test1234",
+                "Test1234!@#$",
+               "loopers",
+                "2000-01-01",
+                "test1234@loopers.com",
             )
 
-            val found = userService.getUserByLoginId(user.loginId)
+            val found = userService.getUserByLoginId(user.loginId.value)
 
             found?.let { assertThat(it.loginId) }?.isEqualTo(user.loginId)
         }
@@ -105,7 +105,7 @@ class UserServiceTest @Autowired constructor(
         @Test
         fun `존재하지 않는 LoginId로 조회하면 NOT_FOUND 예외가 발생한다`() {
             val exception = assertThrows<CoreException> {
-                userService.getUserByLoginId(LoginId("test1234"))
+                userService.getUserByLoginId("test1234")
             }
 
             assertThat(exception.errorType).isEqualTo(ErrorType.NOT_FOUND)
@@ -119,33 +119,33 @@ class UserServiceTest @Autowired constructor(
         @Test
         fun `유효한 비밀번호로 수정하면 성공한다`() {
             val user = userService.createUser(
-                LoginId("test1234"),
-                Password("test1234!@#$"),
-                Name("loopers"),
-                BirthDate("2000-01-01"),
-                Email("test1234@loopers.com"),
+                "test1234",
+                "Test1234!@#$",
+                "loopers",
+                "2000-01-01",
+                "test1234@loopers.com",
             )
-            val newPassword = Password("newpass1234!@#$")
+            val newPassword = "Newpass1234!@#$"
 
-            userService.updatePassword(user.loginId, newPassword, user.birthDate)
+            userService.updatePassword(user.loginId.value, newPassword, user.birthDate.value)
 
-            val updated = userService.getUserByLoginId(user.loginId)
-            updated?.let { assertThat(passwordEncryptor.matches(newPassword.value, it.password)) }?.isTrue()
+            val updated = userService.getUserByLoginId(user.loginId.value)
+            updated?.let { assertThat(passwordEncryptor.matches(newPassword, it.password)) }?.isTrue()
         }
 
         @Test
         fun `비밀번호에 생년월일이 포함되면 실패한다`() {
             val user = userService.createUser(
-                LoginId("test1234"),
-                Password("test1234!@#$"),
-                Name("loopers"),
-                BirthDate("2000-01-01"),
-                Email("test1234@loopers.com"),
+                "test1234",
+                "Test1234!@#$",
+                "loopers",
+                "2000-01-01",
+                "test1234@loopers.com",
             )
-            val newPassword = Password("test20000101!@#$")
+            val newPassword = "Test20000101!@#$"
 
             val exception = assertThrows<CoreException> {
-                userService.updatePassword(user.loginId, newPassword, user.birthDate)
+                userService.updatePassword(user.loginId.value, newPassword, user.birthDate.value)
             }
 
             assertThat(exception.errorType).isEqualTo(ErrorType.BAD_REQUEST)

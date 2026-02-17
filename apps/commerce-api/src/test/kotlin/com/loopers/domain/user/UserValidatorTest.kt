@@ -13,7 +13,7 @@ class UserValidatorTest {
 
     @Test
     fun `비밀번호에 생년월일이 포함되지 않으면 통과한다`() {
-        val password = Password("test1234!@#$")
+        val password = Password("Test1234!@#$")
         val birthDate = BirthDate("2000-01-01")
 
         assertDoesNotThrow {
@@ -23,7 +23,7 @@ class UserValidatorTest {
 
     @Test
     fun `비밀번호에 생년월일(8자리)이 포함되면 실패한다`() {
-        val password = Password("test20000101!@#$")
+        val password = Password("Test20000101!@#$")
         val birthDate = BirthDate("2000-01-01")
 
         val exception = assertThrows<CoreException> {
@@ -35,7 +35,7 @@ class UserValidatorTest {
 
     @Test
     fun `비밀번호에 생년월일(6자리)이 포함되면 실패한다`() {
-        val password = Password("test000101!@#$")
+        val password = Password("Test000101!@#$")
         val birthDate = BirthDate("2000-01-01")
 
         val exception = assertThrows<CoreException> {
