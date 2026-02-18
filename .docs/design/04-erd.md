@@ -30,11 +30,13 @@ erDiagram
         BIGINT brandId PK
         VARCHAR(100) name UK "NOT NULL"
         TEXT description
-        VARCHAR(255) logoImagePath
+        VARCHAR(255) logoImageUrl
         VARCHAR(100) businessNumber UK
         VARCHAR(100) contactEmail UK
         VARCHAR(100) contactPhone UK
-        TEXT address
+        VARCHAR(10) zipCode
+        VARCHAR(255) roadAddress "NOT NULL"
+        VARCHAR(255) detailAddress "NOT NULL"
         BOOLEAN isDeleted "NOT NULL"
         DATETIME createdAt "NOT NULL"
         DATETIME updatedAt "NOT NULL"

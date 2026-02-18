@@ -45,13 +45,13 @@ classDiagram
     %% 브랜드
     class Brand {
         +String brandId
-        +String name
-        +String description
-        +String logoImagePath
-        +String businessNumber
-        +String contactEmail
-        +String contactPhone
-        +String address
+        +Name name
+        +Description description
+        +LogoImageUrl logoImageUrl
+        +BusinessNumber businessNumber
+        +Email contactEmail
+        +PhoneNumber contactPhone
+        +Address address
         +Boolean isDeleted
         +LocalDateTime createdAt
         +LocalDateTime updatedAt
@@ -163,9 +163,13 @@ classDiagram
     %% 브랜드
     class Brand {
         +String brandId
-        +String name
-        +String description
-        +String logoUrl
+        +Name name
+        +Description description
+        +LogoImageUrl logoImageUrl
+        +BusinessNumber businessNumber
+        +Email contactEmail
+        +PhoneNumber contactPhone
+        +Address address
         +Boolean isDeleted
         +LocalDateTime createdAt
         +LocalDateTime updatedAt
