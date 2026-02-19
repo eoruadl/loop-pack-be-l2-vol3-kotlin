@@ -2,12 +2,11 @@ package com.loopers.domain.user
 
 import com.loopers.domain.BaseEntity
 import jakarta.persistence.Column
-import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.Table
 
 @Entity
-@Table(name = "users")
+@Table(name = "tb_user")
 class UserModel(
     loginId: LoginId,
     encryptedPassword: String,

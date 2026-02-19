@@ -5,107 +5,105 @@
 ```mermaid
 erDiagram
     %% 사용자 엔티티
-    USER {
-        BIGINT userId PK
+    tb_user {
+        BIGINT user_id PK
+        VARCHAR(100) login_id UK "NOT NULL"
         VARCHAR(100) name "NOT NULL"
         VARCHAR(100) password "NOT NULL"
         VARCHAR(100) email UK "NOT NULL"
-        DATE birthDate
-        BOOLEAN isDeleted "NOT NULL"
-        DATETIME createdAt "NOT NULL"
-        DATETIME updatedAt "NOT NULL"
-        DATETIME deletedAt
+        DATE birth_date "NOT NULL"
+        DATETIME created_at "NOT NULL"
+        DATETIME updated_at "NOT NULL"
+        DATETIME deleted_at
     }
 
     %% 좋아요 엔티티
-    LIKE {
-        BIGINT likeId PK
-        BIGINT productId UK "NOT NULL"
-        BIGINT userId UK "NOT NULL"
-        DATETIME createdAt "NOT NULL"
+    tb_like {
+        BIGINT like_id PK
+        BIGINT product_id UK "NOT NULL"
+        BIGINT user_id UK "NOT NULL"
+        DATETIME created_at "NOT NULL"
     }
 
     %% 브랜드 엔티티
-    BRAND {
-        BIGINT brandId PK
+    tb_brand {
+        BIGINT brand_id PK
         VARCHAR(100) name UK "NOT NULL"
         TEXT description
-        VARCHAR(255) logoImageUrl
-        VARCHAR(100) businessNumber UK
-        VARCHAR(100) contactEmail UK
-        VARCHAR(100) contactPhone UK
-        VARCHAR(10) zipCode
-        VARCHAR(255) roadAddress "NOT NULL"
-        VARCHAR(255) detailAddress "NOT NULL"
-        BOOLEAN isDeleted "NOT NULL"
-        DATETIME createdAt "NOT NULL"
-        DATETIME updatedAt "NOT NULL"
-        DATETIME deletedAt
+        VARCHAR(255) logo_image_url
+        VARCHAR(100) business_number UK
+        VARCHAR(100) email
+        VARCHAR(100) phone_number
+        VARCHAR(10) zip_code "NOT NULL"
+        VARCHAR(255) road_address "NOT NULL"
+        VARCHAR(255) detail_address "NOT NULL"
+        DATETIME created_at "NOT NULL"
+        DATETIME updated_at "NOT NULL"
+        DATETIME deleted_at
     }
 
     %% 상품 엔티티
-    PRODUCT {
-        BIGINT productId PK
-        BIGINT brandId "NOT NULL"
+    tb_product {
+        BIGINT product_id PK
+        BIGINT brand_id "NOT NULL"
         VARCHAR(100) name "NOT NULL"
         TEXT description
         DECIMAL price "NOT NULL"
-        INT likeCount "NOT NULL"
-        VARCHAR(255) imageUrl
-        BOOLEAN isDeleted "NOT NULL"
-        DATETIME createdAt "NOT NULL"
-        DATETIME updatedAt "NOT NULL"
-        DATETIME deletedAt
+        INT like_count "NOT NULL"
+        VARCHAR(255) image_url
+        DATETIME created_at "NOT NULL"
+        DATETIME updated_at "NOT NULL"
+        DATETIME deleted_at
     }
 
     %% 상품 재고 엔티티
-    PRODUCT_INVENTORY {
-        BIGINT productId PK "NOT NULL"
+    tb_product_inventory {
+        BIGINT product_id PK "NOT NULL"
         INT stock "NOT NULL"
-        DATETIME createdAt "NOT NULL"
-        DATETIME updatedAt "NOT NULL"
+        DATETIME created_at "NOT NULL"
+        DATETIME updated_at "NOT NULL"
     }
 
     %% 주문 엔티티
-    ORDER {
-        BIGINT orderId PK
-        BIGINT userId "NOT NULL"
-        DECIMAL totalAmount "NOT NULL"
-        VARCHAR(100) orderStatus "NOT NULL"
-        DATETIME orderDate "NOT NULL"
-        DATETIME createdAt "NOT NULL"
-        DATETIME updatedAt "NOT NULL"
+    tb_order {
+        BIGINT order_id PK
+        BIGINT user_id "NOT NULL"
+        DECIMAL total_amount "NOT NULL"
+        VARCHAR(100) order_status "NOT NULL"
+        DATETIME order_date "NOT NULL"
+        DATETIME created_at "NOT NULL"
+        DATETIME updated_at "NOT NULL"
     }
 
     %% 주문 상세 엔티티
-    ORDER_ITEM {
-        BIGINT orderItemId PK
-        BIGINT orderId "NOT NULL"
-        BIGINT brandId "NOT NULL"
-        BIGINT productId "NOT NULL"
+    tb_order_item {
+        BIGINT order_item_id PK
+        BIGINT order_id "NOT NULL"
+        BIGINT brand_id "NOT NULL"
+        BIGINT product_id "NOT NULL"
         INT quantity "NOT NULL"
-        DECIMAL priceAtOrder "NOT NULL"
-        VARCHAR(100) productNameSnapshot "NOT NULL"
-        TEXT productDescriptionSnapshot
-        VARCHAR(255) imageUrlSnapshot
+        DECIMAL price_at_order "NOT NULL"
+        VARCHAR(100) product_name_snapshot "NOT NULL"
+        TEXT product_description_snapshot
+        VARCHAR(255) image_url_snapshot
     }
 
     %% 관계 정의
-    BRAND ||--o{ PRODUCT : "소유"
-    PRODUCT ||--|| PRODUCT_INVENTORY : "재고 보유"
+    tb_brand ||--o{ tb_product : "소유"
+    tb_product ||--|| tb_product_inventory : "재고 보유"
     direction LR
-    USER ||--o{ LIKE : "좋아요 등록"
-    PRODUCT ||--o{ LIKE : "좋아요 받음"
-    USER ||--o{ ORDER : "주문 생성"
-    ORDER ||--|{ ORDER_ITEM : "포함"
-    PRODUCT ||--o{ ORDER_ITEM : "참조됨"
+    tb_user ||--o{ tb_like : "좋아요 등록"
+    tb_product ||--o{ tb_like : "좋아요 받음"
+    tb_user ||--o{ tb_order : "주문 생성"
+    tb_order ||--|{ tb_order_item : "포함"
+    tb_product ||--o{ tb_order_item : "참조됨"
 ```
 
 ## 주요 설계 포인트
 
 ### 1. 소프트 삭제 (Soft Delete)
 - **적용 테이블**: USER, BRAND, PRODUCT
-- **구현**: `isDeleted` 플래그와 `deletedAt` 타임스탬프 사용
+- **구현**: `deletedAt` 타임스탬프 사용
 - **목적**: 데이터 복구 가능성 및 이력 추적
 
 ### 2. 스냅샷
