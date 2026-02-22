@@ -1,5 +1,6 @@
 package com.loopers.application.brand
 
+import com.loopers.application.product.ProductService
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import com.loopers.utils.DatabaseCleanUp
@@ -15,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest
 @SpringBootTest
 class BrandServiceTest @Autowired constructor(
     private val brandService: BrandService,
+    private val productService: ProductService,
     private val databaseCleanUp: DatabaseCleanUp,
 ) {
 
@@ -22,6 +24,9 @@ class BrandServiceTest @Autowired constructor(
     fun tearDown() {
         databaseCleanUp.truncateAllTables()
     }
+
+    private fun createProduct(brandId: Long, name: String = "Air Max") =
+        productService.createProduct(brandId, name, "image.png", "상품설명", 10000, 10)
 
     private fun createBrand(
         name: String = "Nike",
@@ -156,13 +161,29 @@ class BrandServiceTest @Autowired constructor(
     inner class DeleteBrand {
 
         @Test
-        fun `브랜드 삭제 (soft delete)`() {
+        fun `삭제된 브랜드는 조회되지 않는다`() {
             val brand = createBrand(name = "Nike", businessNumber = "123-45-00001")
 
             brandService.deleteBrand(brand.id)
 
-            val deletedBrand = brandService.getBrandById(brand.id)
-            assertThat(deletedBrand.deletedAt).isNotNull()
+            val exception = assertThrows<CoreException> {
+                brandService.getBrandById(brand.id)
+            }
+            assertThat(exception.errorType).isEqualTo(ErrorType.NOT_FOUND)
+        }
+
+        @Test
+        fun `브랜드 삭제 시 해당 브랜드의 상품들도 soft delete 된다`() {
+            val brand = createBrand(name = "Nike", businessNumber = "123-45-00001")
+            val product1 = createProduct(brand.id, "Air Max")
+            val product2 = createProduct(brand.id, "Air Force")
+
+            brandService.deleteBrand(brand.id)
+
+            val exception1 = assertThrows<CoreException> { productService.getProductById(product1.id) }
+            val exception2 = assertThrows<CoreException> { productService.getProductById(product2.id) }
+            assertThat(exception1.errorType).isEqualTo(ErrorType.NOT_FOUND)
+            assertThat(exception2.errorType).isEqualTo(ErrorType.NOT_FOUND)
         }
     }
 }

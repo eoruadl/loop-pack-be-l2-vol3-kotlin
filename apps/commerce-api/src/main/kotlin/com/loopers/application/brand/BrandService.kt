@@ -9,6 +9,8 @@ import com.loopers.domain.brand.Email
 import com.loopers.domain.brand.LogoImageUrl
 import com.loopers.domain.brand.Name
 import com.loopers.domain.brand.PhoneNumber
+import com.loopers.domain.product.ProductInventoryRepository
+import com.loopers.domain.product.ProductRepository
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import org.springframework.data.domain.Page
@@ -19,7 +21,9 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class BrandService(
-    private val brandRepository: BrandRepository
+    private val brandRepository: BrandRepository,
+    private val productRepository: ProductRepository,
+    private val productInventoryRepository: ProductInventoryRepository,
 ) {
 
     @Transactional
@@ -34,7 +38,6 @@ class BrandService(
         phoneNumber: String,
         businessNumber: String,
     ): BrandModel {
-
         if (brandRepository.existsByName(Name(name))) {
             throw CoreException(
                 errorType = ErrorType.CONFLICT,
@@ -56,7 +59,7 @@ class BrandService(
             address = Address(zipCode, roadAddress, detailAddress),
             email = Email(email),
             phoneNumber = PhoneNumber(phoneNumber),
-            businessNumber = BusinessNumber(businessNumber)
+            businessNumber = BusinessNumber(businessNumber),
         )
 
         return brandRepository.save(brand)
@@ -88,7 +91,6 @@ class BrandService(
         phoneNumber: String,
         businessNumber: String,
     ): BrandModel {
-
         val brand = brandRepository.findById(id) ?: throw CoreException(
             errorType = ErrorType.NOT_FOUND,
             customMessage = "해당 브랜드를 찾을 수 없습니다.",
@@ -101,7 +103,8 @@ class BrandService(
             )
         }
 
-        if (brand.businessNumber != BusinessNumber(businessNumber) && brandRepository.existsByBusinessNumber(BusinessNumber(businessNumber))) {
+        val newBusinessNumber = BusinessNumber(businessNumber)
+        if (brand.businessNumber != newBusinessNumber && brandRepository.existsByBusinessNumber(newBusinessNumber)) {
             throw CoreException(
                 errorType = ErrorType.CONFLICT,
                 customMessage = "이미 존재하는 사업자등록번호입니다.",
@@ -115,7 +118,7 @@ class BrandService(
             Address(zipCode, roadAddress, detailAddress),
             Email(email),
             PhoneNumber(phoneNumber),
-            BusinessNumber(businessNumber)
+            BusinessNumber(businessNumber),
         )
 
         return brand
@@ -125,9 +128,15 @@ class BrandService(
     fun deleteBrand(id: Long) {
         val brand = brandRepository.findById(id) ?: throw CoreException(
             errorType = ErrorType.NOT_FOUND,
-            customMessage = "해당 브랜드를 찾을 수 없습니다."
+            customMessage = "해당 브랜드를 찾을 수 없습니다.",
         )
 
         brand.delete()
+
+        val products = productRepository.findAllByBrandId(id)
+        products.forEach { product ->
+            product.delete()
+            productInventoryRepository.findByProductId(product.id)?.delete()
+        }
     }
 }

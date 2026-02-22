@@ -1,8 +1,11 @@
 package com.loopers.application.user
 
-import com.loopers.domain.user.*
+import com.loopers.domain.user.BirthDate
+import com.loopers.domain.user.Email
+import com.loopers.domain.user.LoginId
+import com.loopers.domain.user.Name
+import com.loopers.domain.user.UserModel
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 
 class UserInfoTest {

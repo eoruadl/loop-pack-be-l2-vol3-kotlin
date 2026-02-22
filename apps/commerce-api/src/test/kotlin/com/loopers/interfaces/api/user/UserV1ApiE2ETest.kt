@@ -70,7 +70,8 @@ class UserV1ApiE2ETest @Autowired constructor(
             assertAll(
                 { assertThat(response.statusCode).isEqualTo(HttpStatus.OK) },
                 { assertThat(response.body?.data?.loginId).isEqualTo(request.loginId) },
-                { assertThat(response.body?.data?.name).isEqualTo("홍길*") }, // masked
+                // masked
+                { assertThat(response.body?.data?.name).isEqualTo("홍길*") },
                 { assertThat(response.body?.data?.birthDate).isEqualTo(request.birthDate) },
                 { assertThat(response.body?.data?.email).isEqualTo(request.email) },
                 { assertThat(response.body?.data?.id).isNotNull() },
@@ -183,7 +184,8 @@ class UserV1ApiE2ETest @Autowired constructor(
                 { assertThat(response.statusCode).isEqualTo(HttpStatus.OK) },
                 { assertThat(response.body?.data?.id).isEqualTo(user.id) },
                 { assertThat(response.body?.data?.loginId).isEqualTo("testuser") },
-                { assertThat(response.body?.data?.name).isEqualTo("홍길*") }, // masked
+                // masked
+                { assertThat(response.body?.data?.name).isEqualTo("홍길*") },
                 { assertThat(response.body?.data?.birthDate).isEqualTo("1990-01-01") },
                 { assertThat(response.body?.data?.email).isEqualTo("test@example.com") },
             )

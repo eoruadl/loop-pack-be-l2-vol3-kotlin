@@ -17,6 +17,8 @@ class SecurityConfig {
             .authorizeHttpRequests { auth ->
                 auth
                     .requestMatchers("/api/v1/users/**").permitAll()
+                    .requestMatchers("/api/v1/brands/**").permitAll()
+                    .requestMatchers("/api-admin/v1/**").permitAll()
                     .requestMatchers("/actuator/**").permitAll()
                     .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                     .anyRequest().authenticated()

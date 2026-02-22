@@ -17,7 +17,8 @@ value class Password(val value: String) {
     }
 
     companion object {
-        val PASSWORD_PATTERN = """^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]).{8,16}$""".toRegex()
+        val PASSWORD_PATTERN =
+            """^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]).{8,16}$""".toRegex()
     }
 
     fun validateNotContainsBirthDate(birthDate: BirthDate) {
