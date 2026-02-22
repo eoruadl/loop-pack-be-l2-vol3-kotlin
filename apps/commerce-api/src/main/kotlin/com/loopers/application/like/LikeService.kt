@@ -5,6 +5,7 @@ import com.loopers.domain.like.LikeRepository
 import com.loopers.domain.product.ProductRepository
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
@@ -30,6 +31,11 @@ class LikeService(
         product.increaseLikeCount()
 
         return likeRepository.save(like)
+    }
+
+    @Transactional(readOnly = true)
+    fun getLikedProducts(userId: Long, pageable: Pageable): List<LikeModel> {
+        return likeRepository.findAllByUserId(userId, pageable)
     }
 
     @Transactional
