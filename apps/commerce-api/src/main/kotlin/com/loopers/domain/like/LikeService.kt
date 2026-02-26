@@ -2,9 +2,7 @@ package com.loopers.domain.like
 
 import com.loopers.domain.like.LikeModel
 import com.loopers.domain.like.LikeRepository
-import com.loopers.domain.product.ProductRepository
-import com.loopers.support.error.CoreException
-import com.loopers.support.error.ErrorType
+import com.loopers.domain.product.ProductModel
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -12,25 +10,17 @@ import org.springframework.transaction.annotation.Transactional
 @Component
 class LikeService(
     private val likeRepository: LikeRepository,
-    private val productRepository: ProductRepository,
 ) {
 
     @Transactional
-    fun like(userId: Long, productId: Long): LikeModel {
-        val product = productRepository.findById(productId) ?: throw CoreException(
-            errorType = ErrorType.NOT_FOUND,
-            customMessage = "해당 상품을 찾을 수 없습니다.",
-        )
-
-        val existingLike = likeRepository.findByUserIdAndProductId(userId, productId)
+    fun like(userId: Long, product: ProductModel): LikeModel {
+        val existingLike = likeRepository.findByUserIdAndProductId(userId, product.id)
         if (existingLike != null) {
             return existingLike
         }
 
-        val like = LikeModel(userId = userId, productId = productId)
         product.increaseLikeCount()
-
-        return likeRepository.save(like)
+        return likeRepository.save(LikeModel(userId = userId, productId = product.id))
     }
 
     @Transactional(readOnly = true)
@@ -39,14 +29,8 @@ class LikeService(
     }
 
     @Transactional
-    fun unlike(userId: Long, productId: Long) {
-        val product = productRepository.findById(productId) ?: throw CoreException(
-            errorType = ErrorType.NOT_FOUND,
-            customMessage = "해당 상품을 찾을 수 없습니다.",
-        )
-
-        val like = likeRepository.findByUserIdAndProductId(userId, productId) ?: return
-
+    fun unlike(userId: Long, product: ProductModel) {
+        val like = likeRepository.findByUserIdAndProductId(userId, product.id) ?: return
         product.decreaseLikeCount()
         likeRepository.delete(like)
     }
