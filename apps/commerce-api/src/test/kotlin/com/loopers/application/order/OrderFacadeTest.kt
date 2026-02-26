@@ -1,6 +1,5 @@
 package com.loopers.application.order
 
-import com.loopers.domain.order.OrderItemRequest
 import com.loopers.domain.order.OrderItemService
 import com.loopers.domain.order.OrderService
 import com.loopers.domain.user.UserService
@@ -91,7 +90,7 @@ class OrderFacadeTest {
     private fun createOrderModel(
         userId: Long = 1L,
         totalAmount: Long = 10_000L,
-        status: OrderStatus = OrderStatus.PENDING,
+        status: OrderStatus = OrderStatus.PENDING_PAYMENT,
     ): OrderModel {
         val model = OrderModel(userId = userId, totalAmount = TotalAmount(totalAmount), status = status)
         val now = ZonedDateTime.now()
@@ -140,7 +139,7 @@ class OrderFacadeTest {
             // when
             val result = orderFacade.createOrder(
                 loginId = "testuser",
-                items = listOf(OrderItemRequest(productId = 1L, quantity = 1L)),
+                items = listOf(OrderFacade.OrderItemRequest(productId = 1L, quantity = 1L)),
             )
 
             // then

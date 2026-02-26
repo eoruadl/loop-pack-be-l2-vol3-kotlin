@@ -2,7 +2,6 @@ package com.loopers.application.order
 
 import com.loopers.domain.order.ImageUrl
 import com.loopers.domain.order.OrderItemModel
-import com.loopers.domain.order.OrderItemRequest
 import com.loopers.domain.order.OrderItemService
 import com.loopers.domain.order.OrderService
 import com.loopers.domain.order.Price
@@ -86,4 +85,9 @@ class OrderFacade(
         val orderItems = orderItemService.getItemsByOrderId(orderId)
         return OrderInfo.from(order, orderItems)
     }
+
+    data class OrderItemRequest(
+        val productId: Long,
+        val quantity: Long,
+    )
 }

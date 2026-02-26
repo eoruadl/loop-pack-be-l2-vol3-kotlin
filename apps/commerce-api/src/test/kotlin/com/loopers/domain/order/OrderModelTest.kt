@@ -16,24 +16,24 @@ class OrderModelTest {
                 OrderModel(
                     userId = 1L,
                     totalAmount = TotalAmount(10000),
-                    status = OrderStatus.PENDING,
+                    status = OrderStatus.PENDING_PAYMENT,
                 )
             }
         }
     }
 
     @Nested
-    inner class UpdateStatus {
+    inner class Pay {
 
         @Test
-        fun `주문 상태를 변경한다`() {
+        fun `결제 완료 처리 시 상태가 PAID로 변경된다`() {
             val order = OrderModel(
                 userId = 1L,
                 totalAmount = TotalAmount(10000),
-                status = OrderStatus.PENDING,
+                status = OrderStatus.PENDING_PAYMENT,
             )
 
-            order.updateStatus(OrderStatus.PAID)
+            order.pay()
 
             assertThat(order.status).isEqualTo(OrderStatus.PAID)
         }

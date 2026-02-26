@@ -19,7 +19,7 @@ class OrderService(
     @Transactional
     fun createOrder(userId: Long, totalAmount: Long): OrderModel {
         return orderRepository.save(
-            OrderModel(userId = userId, totalAmount = TotalAmount(totalAmount), status = OrderStatus.PENDING)
+            OrderModel(userId = userId, totalAmount = TotalAmount(totalAmount), status = OrderStatus.PENDING_PAYMENT)
         )
     }
 
@@ -35,8 +35,3 @@ class OrderService(
     fun getAllOrders(pageable: Pageable): Page<OrderModel> =
         orderRepository.findAll(pageable)
 }
-
-data class OrderItemRequest(
-    val productId: Long,
-    val quantity: Long,
-)

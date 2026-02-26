@@ -36,7 +36,7 @@ class OrderServiceTest {
     private fun createOrderModel(
         userId: Long = 1L,
         totalAmount: Long = 10_000L,
-        status: OrderStatus = OrderStatus.PENDING,
+        status: OrderStatus = OrderStatus.PENDING_PAYMENT,
     ): OrderModel {
         val model = OrderModel(userId = userId, totalAmount = TotalAmount(totalAmount), status = status)
         val now = ZonedDateTime.now()

@@ -1,7 +1,6 @@
 package com.loopers.interfaces.api.order
 
 import com.loopers.application.order.OrderFacade
-import com.loopers.domain.order.OrderItemRequest
 import com.loopers.interfaces.api.ApiResponse
 import com.loopers.interfaces.api.auth.AuthenticatedUser
 import com.loopers.interfaces.api.auth.RequireAuth
@@ -29,7 +28,7 @@ class OrderV1Controller(
     ): ApiResponse<OrderV1Dto.OrderResponse> =
         orderFacade.createOrder(
             loginId = authenticatedUser.loginId,
-            items = request.items.map { OrderItemRequest(it.productId, it.quantity) },
+            items = request.items.map { OrderFacade.OrderItemRequest(it.productId, it.quantity) },
         ).let { OrderV1Dto.OrderResponse.from(it) }
          .let { ApiResponse.success(it) }
 
