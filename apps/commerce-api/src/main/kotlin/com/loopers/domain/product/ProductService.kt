@@ -4,11 +4,8 @@ import com.loopers.domain.product.Description
 import com.loopers.domain.product.ImageUrl
 import com.loopers.domain.product.Name
 import com.loopers.domain.product.Price
-import com.loopers.domain.product.ProductInventoryModel
-import com.loopers.domain.product.ProductInventoryRepository
 import com.loopers.domain.product.ProductModel
 import com.loopers.domain.product.ProductRepository
-import com.loopers.domain.product.Stock
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import org.springframework.data.domain.Page
@@ -20,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class ProductService(
     private val productRepository: ProductRepository,
-    private val productInventoryRepository: ProductInventoryRepository,
 ) {
 
     @Transactional
@@ -30,7 +26,6 @@ class ProductService(
         imageUrl: String,
         description: String,
         price: Long,
-        quantity: Long,
     ): ProductModel {
         if (productRepository.existsBy(brandId, Name(name))) {
             throw CoreException(
@@ -47,15 +42,7 @@ class ProductService(
             price = Price(price),
         )
 
-        val savedProduct = productRepository.save(product)
-
-        val inventory = ProductInventoryModel(
-            productId = savedProduct.id,
-            stock = Stock(quantity),
-        )
-
-        productInventoryRepository.save(inventory)
-        return savedProduct
+        return productRepository.save(product)
     }
 
     @Transactional(readOnly = true)
@@ -82,16 +69,10 @@ class ProductService(
         imageUrl: String,
         description: String,
         price: Long,
-        quantity: Long,
     ): ProductModel {
         val product = productRepository.findById(id) ?: throw CoreException(
             errorType = ErrorType.NOT_FOUND,
             customMessage = "해당 상품을 찾을 수 없습니다.",
-        )
-
-        val inventory = productInventoryRepository.findByProductId(id) ?: throw CoreException(
-            errorType = ErrorType.NOT_FOUND,
-            customMessage = "해당 상품의 재고를 찾을 수 없습니다.",
         )
 
         product.update(
@@ -100,7 +81,6 @@ class ProductService(
             description = Description(description),
             price = Price(price),
         )
-        inventory.updateStock(quantity)
 
         return product
     }
@@ -112,9 +92,6 @@ class ProductService(
             customMessage = "해당 상품을 찾을 수 없습니다.",
         )
 
-        val inventory = productInventoryRepository.findByProductId(id)
-
         product.delete()
-        inventory?.delete()
     }
 }

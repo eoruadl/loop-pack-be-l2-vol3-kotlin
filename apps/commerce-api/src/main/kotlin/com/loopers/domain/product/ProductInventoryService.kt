@@ -2,7 +2,6 @@ package com.loopers.domain.product
 
 import com.loopers.domain.product.ProductInventoryModel
 import com.loopers.domain.product.ProductInventoryRepository
-import com.loopers.domain.product.ProductRepository
 import com.loopers.domain.product.Stock
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
@@ -12,16 +11,10 @@ import org.springframework.transaction.annotation.Transactional
 @Component
 class ProductInventoryService(
     private val productInventoryRepository: ProductInventoryRepository,
-    private val productRepository: ProductRepository,
 ) {
 
     @Transactional
     fun createInventory(productId: Long, stock: Long): ProductInventoryModel {
-        productRepository.findById(productId) ?: throw CoreException(
-            errorType = ErrorType.NOT_FOUND,
-            customMessage = "해당 상품을 찾을 수 없습니다.",
-        )
-
         if (productInventoryRepository.findByProductId(productId) != null) {
             throw CoreException(
                 errorType = ErrorType.CONFLICT,
@@ -65,5 +58,22 @@ class ProductInventoryService(
 
         inventory.decreaseStock(quantity)
         return inventory
+    }
+
+    @Transactional
+    fun updateStock(productId: Long, quantity: Long): ProductInventoryModel {
+        val inventory = productInventoryRepository.findByProductId(productId) ?: throw CoreException(
+            errorType = ErrorType.NOT_FOUND,
+            customMessage = "해당 상품의 재고를 찾을 수 없습니다.",
+        )
+
+        inventory.updateStock(quantity)
+        return inventory
+    }
+
+    @Transactional
+    fun deleteInventory(productId: Long) {
+        val inventory = productInventoryRepository.findByProductId(productId) ?: return
+        inventory.delete()
     }
 }

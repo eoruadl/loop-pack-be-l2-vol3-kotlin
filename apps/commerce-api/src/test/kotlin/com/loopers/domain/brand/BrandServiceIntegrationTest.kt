@@ -26,7 +26,7 @@ class BrandServiceIntegrationTest @Autowired constructor(
     }
 
     private fun createProduct(brandId: Long, name: String = "Air Max") =
-        productService.createProduct(brandId, name, "image.png", "상품설명", 10000, 10)
+        productService.createProduct(brandId, name, "image.png", "상품설명", 10000)
 
     private fun createBrand(
         name: String = "Nike",

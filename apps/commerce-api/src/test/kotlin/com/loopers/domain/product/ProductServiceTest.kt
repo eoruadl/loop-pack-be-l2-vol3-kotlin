@@ -4,11 +4,8 @@ import com.loopers.domain.product.Description
 import com.loopers.domain.product.ImageUrl
 import com.loopers.domain.product.Name
 import com.loopers.domain.product.Price
-import com.loopers.domain.product.ProductInventoryModel
-import com.loopers.domain.product.ProductInventoryRepository
 import com.loopers.domain.product.ProductModel
 import com.loopers.domain.product.ProductRepository
-import com.loopers.domain.product.Stock
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import io.mockk.every
@@ -30,13 +27,12 @@ import kotlin.test.assertTrue
 class ProductServiceTest {
 
     private val productRepository: ProductRepository = mockk()
-    private val productInventoryRepository: ProductInventoryRepository = mockk()
 
     private lateinit var productService: ProductService
 
     @BeforeEach
     fun setUp() {
-        productService = ProductService(productRepository, productInventoryRepository)
+        productService = ProductService(productRepository)
     }
 
     @Nested
@@ -46,7 +42,6 @@ class ProductServiceTest {
         fun `상품 생성 성공`() {
             // given
             every { productRepository.save(any()) } answers { firstArg() }
-            every { productInventoryRepository.save(any()) } answers { firstArg() }
             every { productRepository.existsBy(any(), any()) } returns false
 
             // when
@@ -56,7 +51,6 @@ class ProductServiceTest {
                 imageUrl = "test.png",
                 description = "뉴발란스 신발",
                 price = 299_000L,
-                quantity = 100,
             )
 
             // then
@@ -77,7 +71,6 @@ class ProductServiceTest {
                     imageUrl = "test.png",
                     description = "뉴발란스 신발",
                     price = 299_000L,
-                    quantity = 100,
                 )
             }
 
@@ -178,9 +171,7 @@ class ProductServiceTest {
         fun `상품 수정 성공`() {
             // given
             val product = ProductModel(1L, Name("뉴발란스 991"), ImageUrl("test.png"), Description("신발"), Price(299_000L))
-            val inventory = ProductInventoryModel(product.id, Stock(100L))
             every { productRepository.findById(1L) } returns product
-            every { productInventoryRepository.findByProductId(1L) } returns inventory
 
             // when
             val result = productService.updateProduct(
@@ -189,7 +180,6 @@ class ProductServiceTest {
                 imageUrl = "new.png",
                 description = "새 신발",
                 price = 350_000L,
-                quantity = 200L,
             )
 
             // then
@@ -197,7 +187,6 @@ class ProductServiceTest {
             assertEquals("new.png", result.imageUrl.value)
             assertEquals("새 신발", result.description.value)
             assertEquals(350_000L, result.price.value)
-            assertEquals(200L, inventory.stock.value)
         }
 
         @Test
@@ -213,30 +202,6 @@ class ProductServiceTest {
                     imageUrl = "new.png",
                     description = "새 신발",
                     price = 350_000L,
-                    quantity = 200L,
-                )
-            }
-
-            // then
-            assertEquals(ErrorType.NOT_FOUND, exception.errorType)
-        }
-
-        @Test
-        fun `재고가 없는 상품 수정 시 예외 반환`() {
-            // given
-            val product = ProductModel(1L, Name("뉴발란스 991"), ImageUrl("test.png"), Description("신발"), Price(299_000L))
-            every { productRepository.findById(1L) } returns product
-            every { productInventoryRepository.findByProductId(1L) } returns null
-
-            // when
-            val exception = assertThrows<CoreException> {
-                productService.updateProduct(
-                    id = 1L,
-                    name = "뉴발란스 992",
-                    imageUrl = "new.png",
-                    description = "새 신발",
-                    price = 350_000L,
-                    quantity = 200L,
                 )
             }
 
@@ -249,19 +214,16 @@ class ProductServiceTest {
     inner class Delete {
 
         @Test
-        fun `상품 삭제 시 재고도 함께 soft delete`() {
+        fun `상품 soft delete 성공`() {
             // given
             val product = ProductModel(1L, Name("뉴발란스 991"), ImageUrl("test.png"), Description("신발"), Price(299_000L))
-            val inventory = ProductInventoryModel(product.id, Stock(100L))
             every { productRepository.findById(1L) } returns product
-            every { productInventoryRepository.findByProductId(1L) } returns inventory
 
             // when
             productService.deleteProduct(1L)
 
             // then
             assertNotNull(product.deletedAt)
-            assertNotNull(inventory.deletedAt)
         }
 
         @Test

@@ -2,6 +2,7 @@ package com.loopers.application.product
 
 import com.loopers.application.brand.BrandInfo
 import com.loopers.domain.brand.BrandService
+import com.loopers.domain.product.ProductInventoryService
 import com.loopers.domain.product.ProductService
 import com.loopers.domain.BaseEntity
 import com.loopers.domain.brand.Address
@@ -16,7 +17,9 @@ import com.loopers.domain.product.Description
 import com.loopers.domain.product.ImageUrl
 import com.loopers.domain.product.Name
 import com.loopers.domain.product.Price
+import com.loopers.domain.product.ProductInventoryModel
 import com.loopers.domain.product.ProductModel
+import com.loopers.domain.product.Stock
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -35,6 +38,9 @@ class ProductFacadeTest {
 
     @Mock
     private lateinit var productService: ProductService
+
+    @Mock
+    private lateinit var productInventoryService: ProductInventoryService
 
     @Mock
     private lateinit var brandService: BrandService
@@ -89,6 +95,10 @@ class ProductFacadeTest {
         return model
     }
 
+    private fun createTestInventoryModel(productId: Long = 1L, stock: Long = 100L): ProductInventoryModel {
+        return ProductInventoryModel(productId = productId, stock = Stock(stock))
+    }
+
     @Nested
     inner class CreateProduct {
 
@@ -96,7 +106,9 @@ class ProductFacadeTest {
         fun `상품 생성 시 BrandInfo가 포함된 ProductInfo를 반환한다`() {
             val productModel = createTestProductModel()
             val brandModel = createTestBrandModel()
-            whenever(productService.createProduct(any(), any(), any(), any(), any(), any())).thenReturn(productModel)
+            val inventoryModel = createTestInventoryModel()
+            whenever(productService.createProduct(any(), any(), any(), any(), any())).thenReturn(productModel)
+            whenever(productInventoryService.createInventory(any(), any())).thenReturn(inventoryModel)
             whenever(brandService.getBrandById(any())).thenReturn(brandModel)
 
             val result = productFacade.createProduct(
@@ -165,7 +177,9 @@ class ProductFacadeTest {
         fun `상품 수정 시 변경된 ProductInfo를 BrandInfo와 함께 반환한다`() {
             val productModel = createTestProductModel(name = "뉴발란스 992", price = 350_000L)
             val brandModel = createTestBrandModel()
-            whenever(productService.updateProduct(any(), any(), any(), any(), any(), any())).thenReturn(productModel)
+            val inventoryModel = createTestInventoryModel(stock = 200L)
+            whenever(productService.updateProduct(any(), any(), any(), any(), any())).thenReturn(productModel)
+            whenever(productInventoryService.updateStock(any(), any())).thenReturn(inventoryModel)
             whenever(brandService.getBrandById(any())).thenReturn(brandModel)
 
             val result = productFacade.updateProduct(
@@ -190,6 +204,7 @@ class ProductFacadeTest {
         @Test
         fun `상품 삭제 시 Unit을 반환한다`() {
             whenever(productService.deleteProduct(any())).then { }
+            whenever(productInventoryService.deleteInventory(any())).then { }
 
             val result = productFacade.deleteProduct(1L)
 
