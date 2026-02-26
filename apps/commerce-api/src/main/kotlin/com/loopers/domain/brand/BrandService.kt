@@ -1,4 +1,4 @@
-package com.loopers.application.brand
+package com.loopers.domain.brand
 
 import com.loopers.domain.brand.Address
 import com.loopers.domain.brand.BrandModel

@@ -1,6 +1,7 @@
 package com.loopers.application.brand
 
 import com.loopers.domain.BaseEntity
+import com.loopers.domain.brand.BrandService
 import com.loopers.domain.brand.Address
 import com.loopers.domain.brand.BrandModel
 import com.loopers.domain.brand.BusinessNumber

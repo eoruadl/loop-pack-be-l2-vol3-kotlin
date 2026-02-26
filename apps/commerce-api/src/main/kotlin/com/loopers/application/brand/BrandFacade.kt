@@ -1,5 +1,6 @@
 package com.loopers.application.brand
 
+import com.loopers.domain.brand.BrandService
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Component

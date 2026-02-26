@@ -1,4 +1,4 @@
-package com.loopers.application.product
+package com.loopers.domain.product
 
 import com.loopers.domain.product.ProductInventoryModel
 import com.loopers.domain.product.ProductInventoryRepository

@@ -1,4 +1,4 @@
-package com.loopers.application.user
+package com.loopers.domain.user
 
 import com.loopers.domain.user.BirthDate
 import com.loopers.domain.user.Email

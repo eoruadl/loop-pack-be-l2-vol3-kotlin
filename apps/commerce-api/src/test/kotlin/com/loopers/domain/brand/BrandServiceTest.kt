@@ -1,6 +1,6 @@
-package com.loopers.application.brand
+package com.loopers.domain.brand
 
-import com.loopers.application.product.ProductService
+import com.loopers.domain.product.ProductService
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import com.loopers.utils.DatabaseCleanUp

@@ -1,4 +1,4 @@
-package com.loopers.application.like
+package com.loopers.domain.like
 
 import com.loopers.domain.like.LikeModel
 import com.loopers.domain.like.LikeRepository

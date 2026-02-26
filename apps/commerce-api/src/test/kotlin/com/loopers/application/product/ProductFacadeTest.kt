@@ -1,7 +1,8 @@
 package com.loopers.application.product
 
 import com.loopers.application.brand.BrandInfo
-import com.loopers.application.brand.BrandService
+import com.loopers.domain.brand.BrandService
+import com.loopers.domain.product.ProductService
 import com.loopers.domain.BaseEntity
 import com.loopers.domain.brand.Address
 import com.loopers.domain.brand.BrandModel

@@ -1,5 +1,6 @@
 package com.loopers.application.user
 
+import com.loopers.domain.user.UserService
 import org.springframework.stereotype.Component
 
 @Component

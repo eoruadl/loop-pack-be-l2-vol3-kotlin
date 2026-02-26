@@ -1,4 +1,4 @@
-package com.loopers.application.product
+package com.loopers.domain.product
 
 import com.loopers.domain.product.Description
 import com.loopers.domain.product.ImageUrl

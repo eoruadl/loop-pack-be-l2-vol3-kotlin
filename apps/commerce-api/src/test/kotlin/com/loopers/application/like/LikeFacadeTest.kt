@@ -1,6 +1,7 @@
 package com.loopers.application.like
 
-import com.loopers.application.user.UserService
+import com.loopers.domain.like.LikeService
+import com.loopers.domain.user.UserService
 import com.loopers.domain.like.LikeModel
 import com.loopers.domain.user.BirthDate
 import com.loopers.domain.user.Email
