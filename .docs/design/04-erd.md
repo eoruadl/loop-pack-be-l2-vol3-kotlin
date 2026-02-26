@@ -20,9 +20,9 @@ erDiagram
     %% 좋아요 엔티티
     tb_like {
         BIGINT like_id PK
-        BIGINT product_id UK "NOT NULL"
-        BIGINT user_id UK "NOT NULL"
-        DATETIME created_at "NOT NULL"
+        BIGINT product_id "NOT NULL"
+        BIGINT user_id "NOT NULL"
+        %% UK(user_id, product_id) 복합 유니크
     }
 
     %% 브랜드 엔티티
@@ -48,8 +48,8 @@ erDiagram
         BIGINT brand_id "NOT NULL"
         VARCHAR(100) name "NOT NULL"
         TEXT description
-        DECIMAL price "NOT NULL"
-        INT like_count "NOT NULL"
+        BIGINT price "NOT NULL"
+        BIGINT like_count "NOT NULL"
         VARCHAR(255) image_url
         DATETIME created_at "NOT NULL"
         DATETIME updated_at "NOT NULL"
@@ -59,18 +59,18 @@ erDiagram
     %% 상품 재고 엔티티
     tb_product_inventory {
         BIGINT product_id PK "NOT NULL"
-        INT stock "NOT NULL"
+        BIGINT stock "NOT NULL"
         DATETIME created_at "NOT NULL"
         DATETIME updated_at "NOT NULL"
+        DATETIME deleted_at
     }
 
     %% 주문 엔티티
     tb_order {
         BIGINT order_id PK
         BIGINT user_id "NOT NULL"
-        DECIMAL total_amount "NOT NULL"
-        VARCHAR(100) order_status "NOT NULL"
-        DATETIME order_date "NOT NULL"
+        BIGINT total_amount "NOT NULL"
+        VARCHAR(100) status "NOT NULL"
         DATETIME created_at "NOT NULL"
         DATETIME updated_at "NOT NULL"
     }
@@ -81,11 +81,10 @@ erDiagram
         BIGINT order_id "NOT NULL"
         BIGINT brand_id "NOT NULL"
         BIGINT product_id "NOT NULL"
-        INT quantity "NOT NULL"
-        DECIMAL price_at_order "NOT NULL"
-        VARCHAR(100) product_name_snapshot "NOT NULL"
-        TEXT product_description_snapshot
-        VARCHAR(255) image_url_snapshot
+        BIGINT quantity "NOT NULL"
+        BIGINT unit_price "NOT NULL"
+        VARCHAR(100) product_name "NOT NULL"
+        VARCHAR(255) image_url
     }
 
     %% 관계 정의
@@ -108,7 +107,7 @@ erDiagram
 
 ### 2. 스냅샷
 - **적용 테이블**: ORDER_ITEM
-- **구현**: `priceAtOrder`, `productNameSnapshot`, `productDescriptionSnapshot`, `imageUrlSnapshot`
+- **구현**: `unit_price`, `product_name`, `image_url`
 - **목적**: 주문 시점의 상품 정보 보존 (상품 정보 변경에도 주문 내역 일관성 유지)
 
 ### 3. 재고 관리
@@ -123,5 +122,5 @@ erDiagram
 
 ### 5. 주문 시스템
 - **ORDER와 ORDER_ITEM**: 1:N 관계 (Composition)
-- **주문 상태**: status 필드로 주문 진행 상태 추적 (PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED)
+- **주문 상태**: status 필드로 주문 진행 상태 추적 (PENDING_PAYMENT, PAID, PREPARING, SHIPPED, DELIVERED, COMPLETED, CANCELLED, EXCHANGE_REQUESTED, EXCHANGING, EXCHANGED, RETURN_REQUESTED, RETURNING, RETURNED)
 - **금액 계산**: totalAmount는 OrderItem들의 subtotal 합계
