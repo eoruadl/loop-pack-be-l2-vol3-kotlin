@@ -1,155 +1,202 @@
 package com.loopers.domain.user
 
-import com.loopers.domain.user.PasswordEncryptor
-import com.loopers.infrastructure.user.UserJpaRepository
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
-import com.loopers.utils.DatabaseCleanUp
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.DisplayName
+import io.mockk.every
+import io.mockk.junit5.MockKExtension
+import io.mockk.mockk
+import io.mockk.verify
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.assertThrows
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
+import org.junit.jupiter.api.extension.ExtendWith
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
-@SpringBootTest
-class UserServiceTest @Autowired constructor(
-    private val userService: UserService,
-    private val userJpaRepository: UserJpaRepository,
-    private val passwordEncryptor: PasswordEncryptor,
-    private val databaseCleanUp: DatabaseCleanUp,
-) {
+@ExtendWith(MockKExtension::class)
+class UserServiceTest {
 
-    @AfterEach
-    fun tearDown() {
-        databaseCleanUp.truncateAllTables()
+    private val userRepository: UserRepository = mockk()
+    private val passwordEncryptor: PasswordEncryptor = mockk()
+
+    private lateinit var userService: UserService
+
+    @BeforeEach
+    fun setUp() {
+        userService = UserService(userRepository, passwordEncryptor)
     }
 
-    @DisplayName("사용자 생성 시,")
+    private fun createUserModel() = UserModel(
+        loginId = LoginId("test1234"),
+        encryptedPassword = "encrypted_password",
+        name = Name("loopers"),
+        birthDate = BirthDate("2000-01-01"),
+        email = Email("test@loopers.com"),
+    )
+
     @Nested
     inner class CreateUser {
 
         @Test
-        fun `유효한 정보로 생성하면 성공한다`() {
-            val loginId = "test1234"
-            val password = "Test1234!@#$"
-            val name = "loopers"
-            val birthDate = "2000-01-01"
-            val email = "test1234@loopers.com"
+        fun `사용자 생성 성공`() {
+            // given
+            every { userRepository.existsByLoginId(LoginId("test1234")) } returns false
+            every { passwordEncryptor.encrypt("Test1234!@#$") } returns "encrypted_password"
+            every { userRepository.save(any()) } answers { firstArg() }
 
-            val user = userService.createUser(loginId, password, name, birthDate, email)
-
-            assertAll(
-                { assertThat(user.id).isGreaterThan(0) },
-                { assertThat(user.loginId.value).isEqualTo(loginId) },
-                { assertThat(user.password).isNotEqualTo(password) },
-                { assertThat(passwordEncryptor.matches(password, user.password)).isTrue() },
-                { assertThat(user.name.value).isEqualTo(name) },
-                { assertThat(user.birthDate.value).isEqualTo(birthDate) },
-                { assertThat(user.email.value).isEqualTo(email) },
+            // when
+            val result = userService.createUser(
+                loginId = "test1234",
+                rawPassword = "Test1234!@#$",
+                name = "loopers",
+                birthDate = "2000-01-01",
+                email = "test@loopers.com",
             )
+
+            // then
+            assertNotNull(result)
+            verify(exactly = 1) { userRepository.save(any()) }
         }
 
         @Test
-        fun `비밀번호에 생년월일(8자리)이 포함되면 실패한다`() {
-            val loginId = "test1234"
-            val password = "Test20000101!@#$"
-            val name = "loopers"
-            val birthDate = "2000-01-01"
-            val email = "test1234@loopers.com"
+        fun `이미 존재하는 loginId면 CONFLICT 예외`() {
+            // given
+            every { userRepository.existsByLoginId(LoginId("test1234")) } returns true
 
+            // when
             val exception = assertThrows<CoreException> {
-                userService.createUser(loginId, password, name, birthDate, email)
+                userService.createUser(
+                    loginId = "test1234",
+                    rawPassword = "Test1234!@#$",
+                    name = "loopers",
+                    birthDate = "2000-01-01",
+                    email = "test@loopers.com",
+                )
             }
 
-            assertThat(exception.errorType).isEqualTo(ErrorType.BAD_REQUEST)
+            // then
+            assertEquals(ErrorType.CONFLICT, exception.errorType)
+            verify(exactly = 0) { userRepository.save(any()) }
         }
 
         @Test
-        fun `비밀번호에 생년월일(6자리)이 포함되면 실패한다`() {
-            val loginId = "test1234"
-            val password = "Test000101!@#$"
-            val name = "loopers"
-            val birthDate = "2000-01-01"
-            val email = "test1234@loopers.com"
+        fun `비밀번호에 생년월일(8자리)이 포함되면 BAD_REQUEST 예외`() {
+            // given
+            every { userRepository.existsByLoginId(LoginId("test1234")) } returns false
 
+            // when
             val exception = assertThrows<CoreException> {
-                userService.createUser(loginId, password, name, birthDate, email)
+                userService.createUser(
+                    loginId = "test1234",
+                    rawPassword = "Test20000101!@",
+                    name = "loopers",
+                    birthDate = "2000-01-01",
+                    email = "test@loopers.com",
+                )
             }
 
-            assertThat(exception.errorType).isEqualTo(ErrorType.BAD_REQUEST)
+            // then
+            assertEquals(ErrorType.BAD_REQUEST, exception.errorType)
+        }
+
+        @Test
+        fun `비밀번호에 생년월일(6자리)이 포함되면 BAD_REQUEST 예외`() {
+            // given
+            every { userRepository.existsByLoginId(LoginId("test1234")) } returns false
+
+            // when
+            val exception = assertThrows<CoreException> {
+                userService.createUser(
+                    loginId = "test1234",
+                    rawPassword = "Test000101!@#$",
+                    name = "loopers",
+                    birthDate = "2000-01-01",
+                    email = "test@loopers.com",
+                )
+            }
+
+            // then
+            assertEquals(ErrorType.BAD_REQUEST, exception.errorType)
         }
     }
 
-    @DisplayName("사용자 조회 시,")
     @Nested
-    inner class GetUser {
+    inner class GetUserByLoginId {
 
         @Test
-        fun `존재하는 LoginId로 조회하면 성공한다`() {
-            val user = userService.createUser(
-                "test1234",
-                "Test1234!@#$",
-               "loopers",
-                "2000-01-01",
-                "test1234@loopers.com",
-            )
+        fun `존재하는 loginId로 조회 성공`() {
+            // given
+            val user = createUserModel()
+            every { userRepository.findByLoginId(LoginId("test1234")) } returns user
 
-            val found = userService.getUserByLoginId(user.loginId.value)
+            // when
+            val result = userService.getUserByLoginId("test1234")
 
-            found?.let { assertThat(it.loginId) }?.isEqualTo(user.loginId)
+            // then
+            assertNotNull(result)
+            assertEquals("test1234", result.loginId.value)
         }
 
         @Test
-        fun `존재하지 않는 LoginId로 조회하면 NOT_FOUND 예외가 발생한다`() {
+        fun `존재하지 않는 loginId 조회 시 NOT_FOUND 예외`() {
+            // given
+            every { userRepository.findByLoginId(LoginId("nonexistent")) } returns null
+
+            // when
             val exception = assertThrows<CoreException> {
-                userService.getUserByLoginId("test1234")
+                userService.getUserByLoginId("nonexistent")
             }
 
-            assertThat(exception.errorType).isEqualTo(ErrorType.NOT_FOUND)
+            // then
+            assertEquals(ErrorType.NOT_FOUND, exception.errorType)
         }
     }
 
-    @DisplayName("비밀번호 수정 시,")
     @Nested
     inner class UpdatePassword {
 
         @Test
-        fun `유효한 비밀번호로 수정하면 성공한다`() {
-            val user = userService.createUser(
-                "test1234",
-                "Test1234!@#$",
-                "loopers",
-                "2000-01-01",
-                "test1234@loopers.com",
-            )
-            val newPassword = "Newpass1234!@#$"
+        fun `존재하지 않는 loginId로 수정 시 NOT_FOUND 예외`() {
+            // given
+            every { userRepository.findByLoginId(LoginId("nonexistent")) } returns null
 
-            userService.updatePassword(user.loginId.value, newPassword, user.birthDate.value)
+            // when
+            val exception = assertThrows<CoreException> {
+                userService.updatePassword("nonexistent", "Newpass1234!@#$", "2000-01-01")
+            }
 
-            val updated = userService.getUserByLoginId(user.loginId.value)
-            updated?.let { assertThat(passwordEncryptor.matches(newPassword, it.password)) }?.isTrue()
+            // then
+            assertEquals(ErrorType.NOT_FOUND, exception.errorType)
         }
 
         @Test
-        fun `비밀번호에 생년월일이 포함되면 실패한다`() {
-            val user = userService.createUser(
-                "test1234",
-                "Test1234!@#$",
-                "loopers",
-                "2000-01-01",
-                "test1234@loopers.com",
-            )
-            val newPassword = "Test20000101!@#$"
+        fun `비밀번호에 생년월일이 포함되면 BAD_REQUEST 예외`() {
+            // given
+            val user = createUserModel()
+            every { userRepository.findByLoginId(LoginId("test1234")) } returns user
 
+            // when
             val exception = assertThrows<CoreException> {
-                userService.updatePassword(user.loginId.value, newPassword, user.birthDate.value)
+                userService.updatePassword("test1234", "Test20000101!@", "2000-01-01")
             }
 
-            assertThat(exception.errorType).isEqualTo(ErrorType.BAD_REQUEST)
+            // then
+            assertEquals(ErrorType.BAD_REQUEST, exception.errorType)
+        }
+
+        @Test
+        fun `유효한 비밀번호로 수정 성공`() {
+            // given
+            val user = createUserModel()
+            every { userRepository.findByLoginId(LoginId("test1234")) } returns user
+            every { passwordEncryptor.encrypt("Newpass1234!@#$") } returns "new_encrypted_password"
+
+            // when
+            userService.updatePassword("test1234", "Newpass1234!@#$", "2000-01-01")
+
+            // then
+            assertEquals("new_encrypted_password", user.password)
         }
     }
 }

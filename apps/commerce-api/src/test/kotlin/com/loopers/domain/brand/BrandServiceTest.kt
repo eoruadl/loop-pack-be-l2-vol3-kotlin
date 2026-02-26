@@ -1,132 +1,181 @@
 package com.loopers.domain.brand
 
-import com.loopers.domain.product.ProductService
+import com.loopers.domain.product.Description as ProductDescription
+import com.loopers.domain.product.ImageUrl
+import com.loopers.domain.product.Name as ProductName
+import com.loopers.domain.product.Price
+import com.loopers.domain.product.ProductInventoryModel
+import com.loopers.domain.product.ProductInventoryRepository
+import com.loopers.domain.product.ProductModel
+import com.loopers.domain.product.ProductRepository
+import com.loopers.domain.product.Stock
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
-import com.loopers.utils.DatabaseCleanUp
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.AfterEach
+import io.mockk.every
+import io.mockk.junit5.MockKExtension
+import io.mockk.mockk
+import io.mockk.verify
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.assertThrows
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
+import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
-@SpringBootTest
-class BrandServiceTest @Autowired constructor(
-    private val brandService: BrandService,
-    private val productService: ProductService,
-    private val databaseCleanUp: DatabaseCleanUp,
-) {
+@ExtendWith(MockKExtension::class)
+class BrandServiceTest {
 
-    @AfterEach
-    fun tearDown() {
-        databaseCleanUp.truncateAllTables()
+    private val brandRepository: BrandRepository = mockk()
+    private val productRepository: ProductRepository = mockk()
+    private val productInventoryRepository: ProductInventoryRepository = mockk()
+
+    private lateinit var brandService: BrandService
+
+    @BeforeEach
+    fun setUp() {
+        brandService = BrandService(brandRepository, productRepository, productInventoryRepository)
     }
 
-    private fun createProduct(brandId: Long, name: String = "Air Max") =
-        productService.createProduct(brandId, name, "image.png", "상품설명", 10000, 10)
-
-    private fun createBrand(
-        name: String = "Nike",
-        email: String = "nike@google.com",
-        phoneNumber: String = "02-3783-4401",
-        businessNumber: String = "123-45-67890",
-    ) = brandService.createBrand(
-        name = name,
-        logoImageUrl = "test.png",
-        description = "테스트 브랜드",
-        zipCode = "12345",
-        roadAddress = "서울특별시 중구 테스트길 1",
-        detailAddress = "1층",
-        email = email,
-        phoneNumber = phoneNumber,
-        businessNumber = businessNumber,
+    private fun createBrandModel() = BrandModel(
+        name = Name("Nike"),
+        logoImageUrl = LogoImageUrl("test.png"),
+        description = Description("테스트 브랜드"),
+        address = Address("12345", "서울특별시 중구 테스트길 1", "1층"),
+        email = Email("nike@example.com"),
+        phoneNumber = PhoneNumber("02-3783-4401"),
+        businessNumber = BusinessNumber("123-45-67890"),
     )
 
     @Nested
     inner class CreateBrand {
 
         @Test
-        fun `브랜드 생성`() {
-            val name = "Nike"
-            val logoImageUrl = "test.png"
-            val description = "Nike는 신발가게"
-            val zipCode = "12345"
-            val roadAddress = "서울특별시 중구 명동길 14"
-            val detailAddress = "1층"
-            val email = "nike@google.com"
-            val phoneNumber = "02-3783-4401"
-            val businessNumber = "123-45-67890"
+        fun `브랜드 생성 성공`() {
+            // given
+            every { brandRepository.existsByName(any()) } returns false
+            every { brandRepository.existsByBusinessNumber(BusinessNumber("123-45-67890")) } returns false
+            every { brandRepository.save(any()) } answers { firstArg() }
 
-            val brand = brandService.createBrand(name, logoImageUrl, description, zipCode, roadAddress, detailAddress, email, phoneNumber, businessNumber)
-
-            assertAll(
-                { assertThat(brand.id).isGreaterThan(0) },
-                { assertThat(brand.logoImageUrl.value).isEqualTo(logoImageUrl) },
-                { assertThat(brand.description.value).isEqualTo(description) },
-                { assertThat(brand.zipCode).isEqualTo(zipCode) },
-                { assertThat(brand.roadAddress).isEqualTo(roadAddress) },
-                { assertThat(brand.detailAddress).isEqualTo(detailAddress) },
-                { assertThat(brand.email.value).isEqualTo(email) },
-                { assertThat(brand.phoneNumber.value).isEqualTo(phoneNumber) },
-                { assertThat(brand.businessNumber.value).isEqualTo(businessNumber) },
+            // when
+            val result = brandService.createBrand(
+                name = "Nike",
+                logoImageUrl = "test.png",
+                description = "테스트 브랜드",
+                zipCode = "12345",
+                roadAddress = "서울특별시 중구 테스트길 1",
+                detailAddress = "1층",
+                email = "nike@example.com",
+                phoneNumber = "02-3783-4401",
+                businessNumber = "123-45-67890",
             )
+
+            // then
+            assertNotNull(result)
+            verify(exactly = 1) { brandRepository.save(any()) }
         }
 
         @Test
-        fun `브랜드명이 이미 존재하면 409 에러를 반환한다`() {
-            createBrand(name = "Nike", businessNumber = "123-45-00001")
+        fun `브랜드명 중복 시 CONFLICT 예외`() {
+            // given
+            every { brandRepository.existsByName(Name("Nike")) } returns true
 
+            // when
             val exception = assertThrows<CoreException> {
-                createBrand(name = "Nike", businessNumber = "123-45-00002")
+                brandService.createBrand(
+                    name = "Nike",
+                    logoImageUrl = "test.png",
+                    description = "테스트 브랜드",
+                    zipCode = "12345",
+                    roadAddress = "서울특별시 중구 테스트길 1",
+                    detailAddress = "1층",
+                    email = "nike@example.com",
+                    phoneNumber = "02-3783-4401",
+                    businessNumber = "123-45-67890",
+                )
             }
 
-            assertThat(exception.errorType).isEqualTo(ErrorType.CONFLICT)
+            // then
+            assertEquals(ErrorType.CONFLICT, exception.errorType)
+            verify(exactly = 0) { brandRepository.save(any()) }
         }
 
         @Test
-        fun `사업자등록번호가 이미 존재하면 409 에러를 반환한다`() {
-            createBrand(name = "Nike", businessNumber = "123-45-00001")
+        fun `사업자등록번호 중복 시 CONFLICT 예외`() {
+            // given
+            every { brandRepository.existsByName(any()) } returns false
+            every { brandRepository.existsByBusinessNumber(BusinessNumber("123-45-67890")) } returns true
 
+            // when
             val exception = assertThrows<CoreException> {
-                createBrand(name = "Adidas", businessNumber = "123-45-00001")
+                brandService.createBrand(
+                    name = "Nike",
+                    logoImageUrl = "test.png",
+                    description = "테스트 브랜드",
+                    zipCode = "12345",
+                    roadAddress = "서울특별시 중구 테스트길 1",
+                    detailAddress = "1층",
+                    email = "nike@example.com",
+                    phoneNumber = "02-3783-4401",
+                    businessNumber = "123-45-67890",
+                )
             }
 
-            assertThat(exception.errorType).isEqualTo(ErrorType.CONFLICT)
+            // then
+            assertEquals(ErrorType.CONFLICT, exception.errorType)
+            verify(exactly = 0) { brandRepository.save(any()) }
         }
     }
 
     @Nested
-    inner class ReadBrand {
+    inner class GetBrands {
 
         @Test
-        fun `브랜드 목록 조회`() {
-            createBrand(name = "Nike", businessNumber = "123-45-00001")
-            createBrand(name = "Addidas", businessNumber = "123-45-00002")
-            createBrand(name = "NewBalance", businessNumber = "123-45-00003")
+        fun `브랜드 목록 반환`() {
+            // given
+            val pageable = PageRequest.of(0, 20)
+            val brands = listOf(createBrandModel(), createBrandModel())
+            every { brandRepository.findAll(pageable) } returns PageImpl(brands, pageable, 2L)
 
-            val brandList = brandService.getBrands()
+            // when
+            val result = brandService.getBrands(pageable)
 
-            assertThat(brandList.content).hasSize(3)
+            // then
+            assertEquals(2, result.content.size)
+            verify(exactly = 1) { brandRepository.findAll(pageable) }
+        }
+    }
+
+    @Nested
+    inner class GetBrandById {
+
+        @Test
+        fun `존재하는 ID로 조회 성공`() {
+            // given
+            val brand = createBrandModel()
+            every { brandRepository.findById(0L) } returns brand
+
+            // when
+            val result = brandService.getBrandById(0L)
+
+            // then
+            assertNotNull(result)
         }
 
         @Test
-        fun `특정 브랜드 상세 조회`() {
-            val brand = createBrand(name = "Nike", businessNumber = "123-45-00001")
+        fun `존재하지 않는 ID 조회 시 NOT_FOUND 예외`() {
+            // given
+            every { brandRepository.findById(99L) } returns null
 
-            val result = brandService.getBrandById(brand.id)
-
-            assertThat(result).isNotNull
-        }
-
-        @Test
-        fun `특정 브랜드가 존재하지 않으면 404 에러 반환`() {
+            // when
             val exception = assertThrows<CoreException> {
-                brandService.getBrandById(1)
+                brandService.getBrandById(99L)
             }
-            assertThat(exception.errorType).isEqualTo(ErrorType.NOT_FOUND)
+
+            // then
+            assertEquals(ErrorType.NOT_FOUND, exception.errorType)
         }
     }
 
@@ -134,26 +183,109 @@ class BrandServiceTest @Autowired constructor(
     inner class UpdateBrand {
 
         @Test
-        fun `브랜드 수정`() {
-            val brand = createBrand(name = "Nike", businessNumber = "123-45-00001")
+        fun `존재하지 않는 ID 수정 시 NOT_FOUND 예외`() {
+            // given
+            every { brandRepository.findById(99L) } returns null
 
-            val description = "Nike는 스포츠 용품 가게"
+            // when
+            val exception = assertThrows<CoreException> {
+                brandService.updateBrand(
+                    id = 99L,
+                    name = "Nike",
+                    logoImageUrl = "test.png",
+                    description = "업데이트",
+                    zipCode = "12345",
+                    roadAddress = "서울특별시 중구 테스트길 1",
+                    detailAddress = "1층",
+                    email = "nike@example.com",
+                    phoneNumber = "02-3783-4401",
+                    businessNumber = "123-45-67890",
+                )
+            }
 
+            // then
+            assertEquals(ErrorType.NOT_FOUND, exception.errorType)
+        }
+
+        @Test
+        fun `브랜드명 중복 시 CONFLICT 예외`() {
+            // given
+            val brand = createBrandModel() // name = "Nike"
+            every { brandRepository.findById(0L) } returns brand
+            every { brandRepository.existsByName(Name("Adidas")) } returns true
+
+            // when
+            val exception = assertThrows<CoreException> {
+                brandService.updateBrand(
+                    id = 0L,
+                    name = "Adidas",
+                    logoImageUrl = "test.png",
+                    description = "테스트 브랜드",
+                    zipCode = "12345",
+                    roadAddress = "서울특별시 중구 테스트길 1",
+                    detailAddress = "1층",
+                    email = "nike@example.com",
+                    phoneNumber = "02-3783-4401",
+                    businessNumber = "123-45-67890",
+                )
+            }
+
+            // then
+            assertEquals(ErrorType.CONFLICT, exception.errorType)
+        }
+
+        @Test
+        fun `사업자등록번호 중복 시 CONFLICT 예외`() {
+            // given
+            val brand = createBrandModel() // businessNumber = "123-45-67890"
+            every { brandRepository.findById(0L) } returns brand
+            every { brandRepository.existsByBusinessNumber(BusinessNumber("999-88-77766")) } returns true
+
+            // when
+            val exception = assertThrows<CoreException> {
+                brandService.updateBrand(
+                    id = 0L,
+                    name = "Nike",
+                    logoImageUrl = "test.png",
+                    description = "테스트 브랜드",
+                    zipCode = "12345",
+                    roadAddress = "서울특별시 중구 테스트길 1",
+                    detailAddress = "1층",
+                    email = "nike@example.com",
+                    phoneNumber = "02-3783-4401",
+                    businessNumber = "999-88-77766",
+                )
+            }
+
+            // then
+            assertEquals(ErrorType.CONFLICT, exception.errorType)
+        }
+
+        @Test
+        fun `브랜드 수정 성공`() {
+            // given
+            val brand = createBrandModel()
+            every { brandRepository.findById(0L) } returns brand
+            every { brandRepository.existsByName(any()) } returns false
+            every { brandRepository.existsByBusinessNumber(BusinessNumber("999-88-77766")) } returns false
+
+            // when
             val result = brandService.updateBrand(
-                brand.id,
-                brand.name.value,
-                brand.logoImageUrl.value,
-                description,
-                brand.zipCode,
-                brand.roadAddress,
-                brand.detailAddress,
-                brand.email.value,
-                brand.phoneNumber.value,
-                brand.businessNumber.value,
+                id = 0L,
+                name = "Nike Updated",
+                logoImageUrl = "updated.png",
+                description = "업데이트된 브랜드",
+                zipCode = "99999",
+                roadAddress = "새 도로명주소",
+                detailAddress = "2층",
+                email = "updated@nike.com",
+                phoneNumber = "02-1234-5678",
+                businessNumber = "999-88-77766",
             )
 
-            assertThat(result.id).isEqualTo(brand.id)
-            assertThat(result.description.value).isEqualTo(description)
+            // then
+            assertEquals("Nike Updated", result.name.value)
+            assertEquals("업데이트된 브랜드", result.description.value)
         }
     }
 
@@ -161,29 +293,42 @@ class BrandServiceTest @Autowired constructor(
     inner class DeleteBrand {
 
         @Test
-        fun `삭제된 브랜드는 조회되지 않는다`() {
-            val brand = createBrand(name = "Nike", businessNumber = "123-45-00001")
+        fun `존재하지 않는 ID 삭제 시 NOT_FOUND 예외`() {
+            // given
+            every { brandRepository.findById(99L) } returns null
 
-            brandService.deleteBrand(brand.id)
-
+            // when
             val exception = assertThrows<CoreException> {
-                brandService.getBrandById(brand.id)
+                brandService.deleteBrand(99L)
             }
-            assertThat(exception.errorType).isEqualTo(ErrorType.NOT_FOUND)
+
+            // then
+            assertEquals(ErrorType.NOT_FOUND, exception.errorType)
         }
 
         @Test
-        fun `브랜드 삭제 시 해당 브랜드의 상품들도 soft delete 된다`() {
-            val brand = createBrand(name = "Nike", businessNumber = "123-45-00001")
-            val product1 = createProduct(brand.id, "Air Max")
-            val product2 = createProduct(brand.id, "Air Force")
+        fun `삭제 시 product와 inventory도 soft delete 된다`() {
+            // given
+            val brand = createBrandModel()
+            val product = ProductModel(
+                brandId = 0L,
+                name = ProductName("Air Max"),
+                imageUrl = ImageUrl("test.png"),
+                description = ProductDescription("신발"),
+                price = Price(100_000L),
+            )
+            val inventory = ProductInventoryModel(product.id, Stock(10L))
+            every { brandRepository.findById(0L) } returns brand
+            every { productRepository.findAllByBrandId(0L) } returns listOf(product)
+            every { productInventoryRepository.findByProductId(0L) } returns inventory
 
-            brandService.deleteBrand(brand.id)
+            // when
+            brandService.deleteBrand(0L)
 
-            val exception1 = assertThrows<CoreException> { productService.getProductById(product1.id) }
-            val exception2 = assertThrows<CoreException> { productService.getProductById(product2.id) }
-            assertThat(exception1.errorType).isEqualTo(ErrorType.NOT_FOUND)
-            assertThat(exception2.errorType).isEqualTo(ErrorType.NOT_FOUND)
+            // then
+            assertNotNull(brand.deletedAt)
+            assertNotNull(product.deletedAt)
+            assertNotNull(inventory.deletedAt)
         }
     }
 }
