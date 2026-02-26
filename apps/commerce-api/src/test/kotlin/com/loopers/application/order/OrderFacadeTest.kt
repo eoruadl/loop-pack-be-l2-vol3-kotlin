@@ -12,10 +12,19 @@ import com.loopers.domain.order.Price
 import com.loopers.domain.order.ProductName
 import com.loopers.domain.order.Quantity
 import com.loopers.domain.order.TotalAmount
+import com.loopers.domain.product.Description
+import com.loopers.domain.product.ImageUrl as ProductImageUrl
+import com.loopers.domain.product.Name
+import com.loopers.domain.product.Price as ProductPrice
+import com.loopers.domain.product.ProductInventoryModel
+import com.loopers.domain.product.ProductInventoryService
+import com.loopers.domain.product.ProductModel
+import com.loopers.domain.product.ProductService
+import com.loopers.domain.product.Stock
 import com.loopers.domain.user.BirthDate
 import com.loopers.domain.user.Email
 import com.loopers.domain.user.LoginId
-import com.loopers.domain.user.Name
+import com.loopers.domain.user.Name as UserName
 import com.loopers.domain.user.UserModel
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
@@ -40,13 +49,15 @@ class OrderFacadeTest {
 
     private val orderService: OrderService = mockk()
     private val orderItemService: OrderItemService = mockk()
+    private val productService: ProductService = mockk()
+    private val productInventoryService: ProductInventoryService = mockk()
     private val userService: UserService = mockk()
 
     private lateinit var orderFacade: OrderFacade
 
     @BeforeEach
     fun setUp() {
-        orderFacade = OrderFacade(orderService, orderItemService, userService)
+        orderFacade = OrderFacade(orderService, orderItemService, productService, productInventoryService, userService)
     }
 
     private fun createUserModel(
@@ -54,10 +65,28 @@ class OrderFacadeTest {
     ): UserModel = UserModel(
         loginId = LoginId(loginId),
         encryptedPassword = "encrypted",
-        name = Name("홍길동"),
+        name = UserName("홍길동"),
         birthDate = BirthDate("1990-01-01"),
         email = Email("test@example.com"),
     )
+
+    private fun createProductModel(
+        brandId: Long = 1L,
+        name: String = "뉴발란스 991",
+        imageUrl: String = "test.png",
+        price: Long = 10_000L,
+    ): ProductModel = ProductModel(
+        brandId = brandId,
+        name = Name(name),
+        imageUrl = ProductImageUrl(imageUrl),
+        description = Description("신발"),
+        price = ProductPrice(price),
+    )
+
+    private fun createInventoryModel(
+        productId: Long = 1L,
+        stock: Long = 100L,
+    ): ProductInventoryModel = ProductInventoryModel(productId, Stock(stock))
 
     private fun createOrderModel(
         userId: Long = 1L,
@@ -97,11 +126,16 @@ class OrderFacadeTest {
         fun `주문 생성 시 OrderInfo를 반환한다`() {
             // given
             val user = createUserModel()
+            val product = createProductModel(price = 10_000L)
+            val inventory = createInventoryModel()
             val order = createOrderModel(totalAmount = 10_000L)
             val items = listOf(createOrderItemModel())
 
             every { userService.getUserByLoginId("testuser") } returns user
-            every { orderService.createOrder(any(), any()) } returns (order to items)
+            every { productService.getProductById(1L) } returns product
+            every { productInventoryService.decreaseStock(1L, 1L) } returns inventory
+            every { orderService.createOrder(any(), any()) } returns order
+            every { orderItemService.saveAll(any()) } returns items
 
             // when
             val result = orderFacade.createOrder(
