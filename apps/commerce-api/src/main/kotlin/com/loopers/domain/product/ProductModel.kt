@@ -3,11 +3,22 @@ package com.loopers.domain.product
 import com.loopers.domain.BaseEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.Index
 import jakarta.persistence.Table
 import org.hibernate.annotations.SQLRestriction
 
 @Entity
-@Table(name = "tb_product")
+@Table(
+    name = "tb_product",
+    indexes = [
+        Index(name = "idx_product_brand_id_deleted_at_like_count", columnList = "brand_id, deleted_at, like_count DESC"),
+        Index(name = "idx_product_deleted_at_like_count", columnList = "deleted_at, like_count DESC"),
+        Index(name = "idx_product_deleted_at_price", columnList = "deleted_at, price"),
+        Index(name = "idx_product_brand_id_deleted_at_price", columnList = "brand_id, deleted_at, price"),
+        Index(name = "idx_product_deleted_at_created_at", columnList = "deleted_at, createdAt DESC"),
+        Index(name = "idx_product_brand_id_deleted_at_created_at", columnList = "brand_id, deleted_at, createdAt DESC"),
+    ],
+)
 @SQLRestriction("deleted_at IS NULL")
 class ProductModel(
     brandId: Long,

@@ -20,6 +20,7 @@ import com.loopers.domain.product.Price
 import com.loopers.domain.product.ProductInventoryModel
 import com.loopers.domain.product.ProductModel
 import com.loopers.domain.product.Stock
+import com.loopers.infrastructure.product.ProductCacheManager
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -44,6 +45,9 @@ class ProductFacadeTest {
 
     @Mock
     private lateinit var brandService: BrandService
+
+    @Mock
+    private lateinit var productCacheManager: ProductCacheManager
 
     @InjectMocks
     private lateinit var productFacade: ProductFacade
