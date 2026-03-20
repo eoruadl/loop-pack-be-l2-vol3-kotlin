@@ -1,7 +1,12 @@
 package com.loopers.application.order
 
+import com.loopers.application.payment.PgPaymentPort
+import com.loopers.application.payment.PgPaymentRequest
+import com.loopers.application.payment.PgPaymentResponse
+import com.loopers.application.payment.PgPaymentStatusResponse
 import com.loopers.application.product.ProductFacade
 import com.loopers.domain.brand.BrandService
+import com.loopers.domain.payment.CardType
 import com.loopers.domain.user.BirthDate
 import com.loopers.domain.user.Email
 import com.loopers.domain.user.LoginId
@@ -19,8 +24,12 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Primary
 import org.springframework.data.domain.PageRequest
 import java.time.LocalDate
+import java.util.concurrent.CompletableFuture
 
 @SpringBootTest
 class OrderFacadeIntegrationTest @Autowired constructor(
@@ -32,12 +41,34 @@ class OrderFacadeIntegrationTest @Autowired constructor(
     private val databaseCleanUp: DatabaseCleanUp,
 ) {
 
+    @TestConfiguration
+    class FakePgConfig {
+        @Bean
+        @Primary
+        fun fakePgPaymentClient(): PgPaymentPort = object : PgPaymentPort {
+            override fun requestPayment(request: PgPaymentRequest): CompletableFuture<PgPaymentResponse> =
+                CompletableFuture.completedFuture(PgPaymentResponse(pgTransactionId = "fake-pg-tx-${request.orderId}"))
+
+            override fun getPayment(pgTxId: String, userId: Long): CompletableFuture<PgPaymentStatusResponse> =
+                CompletableFuture.completedFuture(
+                    PgPaymentStatusResponse(pgTransactionId = pgTxId, status = "SUCCESS", failureCode = null)
+                )
+
+            override fun getPaymentByOrderId(orderId: Long, userId: Long): CompletableFuture<PgPaymentStatusResponse?> =
+                CompletableFuture.completedFuture(
+                    PgPaymentStatusResponse(pgTransactionId = "fake-pg-tx-ORDER-$orderId", status = "SUCCESS", failureCode = null)
+                )
+        }
+    }
+
     @AfterEach
     fun tearDown() {
         databaseCleanUp.truncateAllTables()
     }
 
     private val testPassword = "Password123!"
+    private val defaultCardType = CardType.SAMSUNG
+    private val defaultCardNo = "1234567890123456"
 
     private fun createUser(loginId: String = "testuser") = userJpaRepository.save(
         UserModel(
@@ -74,7 +105,7 @@ class OrderFacadeIntegrationTest @Autowired constructor(
     inner class CreateOrder {
 
         @Test
-        fun `사용자 상품 재고 생성 후 주문 시 OrderInfo와 items를 반환한다`() {
+        fun `사용자 상품 재고 생성 후 주문 시 OrderWithPaymentInfo와 items를 반환한다`() {
             val user = createUser()
             val brand = createBrand()
             val product = createProduct(brand.id, quantity = 10L)
@@ -83,14 +114,17 @@ class OrderFacadeIntegrationTest @Autowired constructor(
                 loginId = "testuser",
                 items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 2L)),
                 couponId = null,
+                cardType = defaultCardType,
+                cardNo = defaultCardNo,
             )
 
-            assertThat(result.userId).isEqualTo(user.id)
-            assertThat(result.totalAmount).isEqualTo(100_000L)
-            assertThat(result.items).hasSize(1)
-            assertThat(result.items[0].productId).isEqualTo(product.id)
-            assertThat(result.items[0].quantity).isEqualTo(2L)
-            assertThat(result.items[0].subTotal).isEqualTo(100_000L)
+            assertThat(result.order.userId).isEqualTo(user.id)
+            assertThat(result.order.totalAmount).isEqualTo(100_000L)
+            assertThat(result.order.items).hasSize(1)
+            assertThat(result.order.items[0].productId).isEqualTo(product.id)
+            assertThat(result.order.items[0].quantity).isEqualTo(2L)
+            assertThat(result.order.items[0].subTotal).isEqualTo(100_000L)
+            assertThat(result.paymentId).isGreaterThan(0L)
         }
 
         @Test
@@ -105,6 +139,8 @@ class OrderFacadeIntegrationTest @Autowired constructor(
                     loginId = "testuser",
                     items = listOf(OrderFacade.OrderItemRequest(productId = productInfo.id, quantity = 5L)),
                     couponId = null,
+                    cardType = defaultCardType,
+                    cardNo = defaultCardNo,
                 )
             }
 
@@ -125,11 +161,15 @@ class OrderFacadeIntegrationTest @Autowired constructor(
                 loginId = "testuser",
                 items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
                 couponId = null,
+                cardType = defaultCardType,
+                cardNo = defaultCardNo,
             )
             orderFacade.createOrder(
                 loginId = "testuser",
                 items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
                 couponId = null,
+                cardType = defaultCardType,
+                cardNo = defaultCardNo,
             )
 
             val result = orderFacade.getOrders(
@@ -157,11 +197,13 @@ class OrderFacadeIntegrationTest @Autowired constructor(
                 loginId = "testuser",
                 items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
                 couponId = null,
+                cardType = defaultCardType,
+                cardNo = defaultCardNo,
             )
 
-            val result = orderFacade.getOrderById("testuser", created.id)
+            val result = orderFacade.getOrderById("testuser", created.order.id)
 
-            assertThat(result.id).isEqualTo(created.id)
+            assertThat(result.id).isEqualTo(created.order.id)
             assertThat(result.items).hasSize(1)
         }
 
@@ -176,10 +218,12 @@ class OrderFacadeIntegrationTest @Autowired constructor(
                 loginId = "otheruser",
                 items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
                 couponId = null,
+                cardType = defaultCardType,
+                cardNo = defaultCardNo,
             )
 
             val exception = assertThrows<CoreException> {
-                orderFacade.getOrderById("testuser", otherOrder.id)
+                orderFacade.getOrderById("testuser", otherOrder.order.id)
             }
 
             assertThat(exception.errorType).isEqualTo(ErrorType.FORBIDDEN)
@@ -200,11 +244,15 @@ class OrderFacadeIntegrationTest @Autowired constructor(
                 loginId = "user1",
                 items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
                 couponId = null,
+                cardType = defaultCardType,
+                cardNo = defaultCardNo,
             )
             orderFacade.createOrder(
                 loginId = "user2",
                 items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
                 couponId = null,
+                cardType = defaultCardType,
+                cardNo = defaultCardNo,
             )
 
             val result = orderFacade.getAllOrders(PageRequest.of(0, 10))

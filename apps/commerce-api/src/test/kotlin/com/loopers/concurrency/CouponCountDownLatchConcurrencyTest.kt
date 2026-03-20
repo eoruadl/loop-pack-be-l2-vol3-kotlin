@@ -1,11 +1,16 @@
 package com.loopers.concurrency
 
 import com.loopers.application.order.OrderFacade
+import com.loopers.application.payment.PgPaymentPort
+import com.loopers.application.payment.PgPaymentRequest
+import com.loopers.application.payment.PgPaymentResponse
+import com.loopers.application.payment.PgPaymentStatusResponse
 import com.loopers.application.product.ProductFacade
 import com.loopers.domain.brand.BrandService
 import com.loopers.domain.coupon.CouponTemplateService
 import com.loopers.domain.coupon.CouponType
 import com.loopers.domain.coupon.UserCouponService
+import com.loopers.domain.payment.CardType
 import com.loopers.domain.user.BirthDate
 import com.loopers.domain.user.Email
 import com.loopers.domain.user.LoginId
@@ -19,7 +24,11 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Primary
 import java.time.ZonedDateTime
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -36,6 +45,26 @@ class CouponCountDownLatchConcurrencyTest @Autowired constructor(
     private val passwordEncryptor: PasswordEncryptor,
     private val databaseCleanUp: DatabaseCleanUp,
 ) {
+
+    @TestConfiguration
+    class FakePgConfig {
+        @Bean
+        @Primary
+        fun fakePgPaymentClient(): PgPaymentPort = object : PgPaymentPort {
+            override fun requestPayment(request: PgPaymentRequest): CompletableFuture<PgPaymentResponse> =
+                CompletableFuture.completedFuture(PgPaymentResponse(pgTransactionId = "fake-pg-tx-${request.orderId}"))
+
+            override fun getPayment(pgTxId: String, userId: Long): CompletableFuture<PgPaymentStatusResponse> =
+                CompletableFuture.completedFuture(
+                    PgPaymentStatusResponse(pgTransactionId = pgTxId, status = "SUCCESS", failureCode = null)
+                )
+
+            override fun getPaymentByOrderId(orderId: Long, userId: Long): CompletableFuture<PgPaymentStatusResponse?> =
+                CompletableFuture.completedFuture(
+                    PgPaymentStatusResponse(pgTransactionId = "fake-pg-tx-ORDER-$orderId", status = "SUCCESS", failureCode = null)
+                )
+        }
+    }
 
     @AfterEach
     fun tearDown() = databaseCleanUp.truncateAllTables()
@@ -98,6 +127,8 @@ class CouponCountDownLatchConcurrencyTest @Autowired constructor(
                         loginId = loginId,
                         items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
                         couponId = userCoupon.id,
+                        cardType = CardType.SAMSUNG,
+                        cardNo = "1234567890123456",
                     )
                     successCount.incrementAndGet()
                 } catch (e: Exception) {

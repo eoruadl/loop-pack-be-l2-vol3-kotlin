@@ -1,14 +1,12 @@
 import http from 'k6/http';
-import { sleep } from 'k6';
-import { BASE_URL, authHeaders, jsonHeaders } from './client.js';
+import { BASE_URL, jsonHeaders } from './client.js';
 
 /**
- * Run setup: create a test user, look up an existing product, create N orders.
+ * Run setup: create a test user and look up an existing product.
  *
- * @param {number} orderCount  Number of PENDING_PAYMENT orders to pre-create.
- * @returns {{ loginId: string, password: string, orders: number[] }}
+ * @returns {{ loginId: string, password: string, productId: number }}
  */
-export function runSetup(orderCount = 100) {
+export function runSetup() {
   const ts = Date.now();
   // LoginId: alphanumeric only (matches ^[a-zA-Z0-9]+$)
   const loginId = `cbtest${ts}`;
@@ -56,38 +54,6 @@ export function runSetup(orderCount = 100) {
   const productId = content[0].id;
   console.log(`[setup] Using productId=${productId}`);
 
-  // 3. Create N orders (PENDING_PAYMENT)
-  const headers = authHeaders(loginId, password);
-  const orders = [];
-
-  for (let i = 0; i < orderCount; i++) {
-    const orderRes = http.post(
-      `${BASE_URL}/api/v1/orders`,
-      JSON.stringify({
-        items: [{ productId, quantity: 1 }],
-      }),
-      { headers },
-    );
-
-    if (orderRes.status === 200) {
-      const orderId = orderRes.json().data.id;
-      orders.push(orderId);
-    } else {
-      console.warn(
-        `[setup] Order ${i + 1}/${orderCount} failed: status=${orderRes.status}`,
-      );
-    }
-
-    // Small pacing to avoid hammering the DB during setup
-    if ((i + 1) % 20 === 0) sleep(0.1);
-  }
-
-  if (orders.length === 0) {
-    throw new Error('Failed to create any orders during setup.');
-  }
-
-  console.log(
-    `[setup] Done — loginId=${loginId}, productId=${productId}, orders=${orders.length}`,
-  );
-  return { loginId, password, orders };
+  console.log(`[setup] Done — loginId=${loginId}, productId=${productId}`);
+  return { loginId, password, productId };
 }

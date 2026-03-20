@@ -2,12 +2,9 @@ package com.loopers.interfaces.api.payment
 
 import com.loopers.application.payment.PaymentFacade
 import com.loopers.application.payment.PaymentRecoveryFacade
-import com.loopers.domain.payment.CardType
 import com.loopers.interfaces.api.ApiResponse
 import com.loopers.interfaces.api.auth.AuthenticatedUser
 import com.loopers.interfaces.api.auth.RequireAuth
-import com.loopers.support.error.CoreException
-import com.loopers.support.error.ErrorType
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -20,23 +17,6 @@ class PaymentV1Controller(
     private val paymentFacade: PaymentFacade,
     private val paymentRecoveryFacade: PaymentRecoveryFacade,
 ) : PaymentV1ApiSpec {
-
-    @PostMapping
-    override fun requestPayment(
-        @RequireAuth authenticatedUser: AuthenticatedUser,
-        @RequestBody request: PaymentV1Dto.CreatePaymentRequest,
-    ): ApiResponse<PaymentV1Dto.PaymentResponse> {
-        val cardType = runCatching { CardType.valueOf(request.cardType) }
-            .getOrElse { throw CoreException(ErrorType.BAD_REQUEST, "유효하지 않은 카드 타입입니다: ${request.cardType}") }
-
-        return paymentFacade.requestPayment(
-            loginId = authenticatedUser.loginId,
-            orderId = request.orderId,
-            cardType = cardType,
-            cardNo = request.cardNo,
-        ).let { PaymentV1Dto.PaymentResponse.from(it) }
-         .let { ApiResponse.success(it) }
-    }
 
     @PostMapping("/callback")
     override fun handleCallback(

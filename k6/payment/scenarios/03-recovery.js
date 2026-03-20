@@ -43,22 +43,16 @@ export const options = {
 
 // ---- Setup ----------------------------------------------------------------
 export function setup() {
-  // Phase 1: 20 VU × ~20s = many iterations; Phase 3: 5 VU × 35s
-  return runSetup(400);
+  return runSetup();
 }
 
 // ---- VU logic -------------------------------------------------------------
-const MAX_VUS = 20;
-
 export default function (data) {
-  const { loginId, password, orders } = data;
-
-  const idx = ((__VU - 1) + __ITER * MAX_VUS) % orders.length;
-  const orderId = orders[idx];
+  const { loginId, password, productId } = data;
 
   const headers = authHeaders(loginId, password);
   const payload = JSON.stringify({
-    orderId,
+    items: [{ productId, quantity: 1 }],
     cardType: 'HYUNDAI',
     cardNo: '1111222233334444',
   });
@@ -72,7 +66,7 @@ export default function (data) {
     case 'CLOSED':    cbClosed.add(1);      break;
   }
 
-  const res = http.post(`${BASE_URL}/api/v1/payments`, payload, { headers });
+  const res = http.post(`${BASE_URL}/api/v1/orders`, payload, { headers });
 
   // Classify as CB fallback vs real PG response
   const isFallback = (() => {
@@ -88,15 +82,15 @@ export default function (data) {
   }
 
   check(res, {
-    'payment_success (200)':  (r) => r.status === 200,
-    'pg_fail (400/500)':      (r) => (r.status === 400 || r.status === 500) && !isFallback,
-    'cb_fallback (500)':      (_) => isFallback,
+    'order_success (200)':  (r) => r.status === 200,
+    'pg_fail (400/500)':    (r) => (r.status === 400 || r.status === 500) && !isFallback,
+    'cb_fallback (500)':    (_) => isFallback,
   });
 
   // In HALF_OPEN: track if the probe call succeeded (PG returned SUCCESS)
   if (stateBefore === 'HALF_OPEN' && res.status === 200) {
     probeSuccess.add(1);
-    console.log(`[recovery] HALF_OPEN probe SUCCESS — VU=${__VU} orderId=${orderId}`);
+    console.log(`[recovery] HALF_OPEN probe SUCCESS — VU=${__VU}`);
   }
 
   // Progress log every iteration so we can trace the state machine

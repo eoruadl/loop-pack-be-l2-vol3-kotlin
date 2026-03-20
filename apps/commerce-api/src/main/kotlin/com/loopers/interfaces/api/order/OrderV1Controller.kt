@@ -1,9 +1,12 @@
 package com.loopers.interfaces.api.order
 
 import com.loopers.application.order.OrderFacade
+import com.loopers.domain.payment.CardType
 import com.loopers.interfaces.api.ApiResponse
 import com.loopers.interfaces.api.auth.AuthenticatedUser
 import com.loopers.interfaces.api.auth.RequireAuth
+import com.loopers.support.error.CoreException
+import com.loopers.support.error.ErrorType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.web.bind.annotation.GetMapping
@@ -25,13 +28,19 @@ class OrderV1Controller(
     override fun createOrder(
         @RequireAuth authenticatedUser: AuthenticatedUser,
         @RequestBody request: OrderV1Dto.CreateOrderRequest,
-    ): ApiResponse<OrderV1Dto.OrderResponse> =
-        orderFacade.createOrder(
+    ): ApiResponse<OrderV1Dto.OrderResponse> {
+        val cardType = runCatching { CardType.valueOf(request.cardType) }
+            .getOrElse { throw CoreException(ErrorType.BAD_REQUEST, "유효하지 않은 카드 타입입니다: ${request.cardType}") }
+
+        return orderFacade.createOrder(
             loginId = authenticatedUser.loginId,
             items = request.items.map { OrderFacade.OrderItemRequest(it.productId, it.quantity) },
             couponId = request.couponId,
-        ).let { OrderV1Dto.OrderResponse.from(it) }
+            cardType = cardType,
+            cardNo = request.cardNo,
+        ).let { OrderV1Dto.OrderResponse.from(it.order, it.paymentId) }
          .let { ApiResponse.success(it) }
+    }
 
     @GetMapping
     override fun getOrders(

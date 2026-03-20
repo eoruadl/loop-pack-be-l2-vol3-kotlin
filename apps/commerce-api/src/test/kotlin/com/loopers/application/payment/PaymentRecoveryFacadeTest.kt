@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.time.ZonedDateTime
+import java.util.concurrent.CompletableFuture
 
 @ExtendWith(MockKExtension::class)
 class PaymentRecoveryFacadeTest {
@@ -92,11 +93,11 @@ class PaymentRecoveryFacadeTest {
             val order = createOrderModel()
 
             every { paymentRepository.findById(0L) } returns payment
-            every { pgPaymentPort.getPayment("pg-tx-abc", 1L) } returns PgPaymentStatusResponse(
+            every { pgPaymentPort.getPayment("pg-tx-abc", 1L) } returns CompletableFuture.completedFuture(PgPaymentStatusResponse(
                 pgTransactionId = "pg-tx-abc",
                 status = "SUCCESS",
                 failureCode = null,
-            )
+            ))
             every { paymentRepository.save(any()) } answers { firstArg() }
             every { orderService.payOrder(10L) } returns order
 
@@ -111,11 +112,11 @@ class PaymentRecoveryFacadeTest {
             val payment = createPaymentModel(pgTxId = "pg-tx-abc")
 
             every { paymentRepository.findById(0L) } returns payment
-            every { pgPaymentPort.getPayment("pg-tx-abc", 1L) } returns PgPaymentStatusResponse(
+            every { pgPaymentPort.getPayment("pg-tx-abc", 1L) } returns CompletableFuture.completedFuture(PgPaymentStatusResponse(
                 pgTransactionId = "pg-tx-abc",
                 status = "FAILED",
                 failureCode = PgFailureCode.UNKNOWN,
-            )
+            ))
             every { paymentRepository.save(any()) } answers { firstArg() }
 
             paymentRecoveryFacade.recoverPayment(0L)
@@ -129,11 +130,11 @@ class PaymentRecoveryFacadeTest {
             val order = createOrderModel()
 
             every { paymentRepository.findById(0L) } returns payment
-            every { pgPaymentPort.getPaymentByOrderId(10L, 1L) } returns PgPaymentStatusResponse(
+            every { pgPaymentPort.getPaymentByOrderId(10L, 1L) } returns CompletableFuture.completedFuture(PgPaymentStatusResponse(
                 pgTransactionId = "pg-tx-new",
                 status = "SUCCESS",
                 failureCode = null,
-            )
+            ))
             every { paymentRepository.save(any()) } answers { firstArg() }
             every { orderService.payOrder(10L) } returns order
 
@@ -148,7 +149,7 @@ class PaymentRecoveryFacadeTest {
             val payment = createPaymentModel(pgTxId = null)
 
             every { paymentRepository.findById(0L) } returns payment
-            every { pgPaymentPort.getPaymentByOrderId(10L, 1L) } returns null
+            every { pgPaymentPort.getPaymentByOrderId(10L, 1L) } returns CompletableFuture.completedFuture(null)
             every { paymentRepository.save(any()) } answers { firstArg() }
 
             paymentRecoveryFacade.recoverPayment(0L)

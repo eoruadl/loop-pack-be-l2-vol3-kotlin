@@ -6,12 +6,6 @@ import java.time.ZonedDateTime
 
 class PaymentV1Dto {
 
-    data class CreatePaymentRequest(
-        val orderId: Long,
-        val cardType: String,
-        val cardNo: String,
-    )
-
     data class PgCallbackRequest(
         val transactionKey: String,
         val orderId: String,

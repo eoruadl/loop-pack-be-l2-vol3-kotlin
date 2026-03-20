@@ -1,8 +1,14 @@
 package com.loopers.interfaces.api.order
 
 import com.loopers.application.order.OrderFacade
+import com.loopers.application.payment.PgFailureCode
+import com.loopers.application.payment.PgPaymentPort
+import com.loopers.application.payment.PgPaymentRequest
+import com.loopers.application.payment.PgPaymentResponse
+import com.loopers.application.payment.PgPaymentStatusResponse
 import com.loopers.application.product.ProductFacade
 import com.loopers.domain.brand.BrandService
+import com.loopers.domain.payment.CardType
 import com.loopers.domain.user.BirthDate
 import com.loopers.domain.user.Email
 import com.loopers.domain.user.LoginId
@@ -20,13 +26,17 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.web.client.TestRestTemplate
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Primary
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import java.time.LocalDate
+import java.util.concurrent.CompletableFuture
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class OrderV1ApiE2ETest @Autowired constructor(
@@ -44,6 +54,30 @@ class OrderV1ApiE2ETest @Autowired constructor(
         private const val LDAP_HEADER = "X-Loopers-Ldap"
         private const val LDAP_VALUE = "loopers.admin"
         private const val TEST_PASSWORD = "Password123!"
+        private val DEFAULT_CARD_TYPE = CardType.SAMSUNG.name
+        private const val DEFAULT_CARD_NO = "1234567890123456"
+    }
+
+    @TestConfiguration
+    class FakePgConfig {
+        @Bean
+        @Primary
+        fun fakePgPaymentClient(): FakePgPaymentClient = FakePgPaymentClient()
+    }
+
+    class FakePgPaymentClient : PgPaymentPort {
+        override fun requestPayment(request: PgPaymentRequest): CompletableFuture<PgPaymentResponse> =
+            CompletableFuture.completedFuture(PgPaymentResponse(pgTransactionId = "fake-pg-tx-${request.orderId}"))
+
+        override fun getPayment(pgTxId: String, userId: Long): CompletableFuture<PgPaymentStatusResponse> =
+            CompletableFuture.completedFuture(
+                PgPaymentStatusResponse(pgTransactionId = pgTxId, status = "SUCCESS", failureCode = null)
+            )
+
+        override fun getPaymentByOrderId(orderId: Long, userId: Long): CompletableFuture<PgPaymentStatusResponse?> =
+            CompletableFuture.completedFuture(
+                PgPaymentStatusResponse(pgTransactionId = "fake-pg-tx-ORDER-$orderId", status = "SUCCESS", failureCode = null)
+            )
     }
 
     @AfterEach
@@ -104,6 +138,8 @@ class OrderV1ApiE2ETest @Autowired constructor(
 
             val request = OrderV1Dto.CreateOrderRequest(
                 items = listOf(OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId = product.id, quantity = 2L)),
+                cardType = DEFAULT_CARD_TYPE,
+                cardNo = DEFAULT_CARD_NO,
             )
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
@@ -119,6 +155,7 @@ class OrderV1ApiE2ETest @Autowired constructor(
                 { assertThat(response.body?.data?.totalAmount).isEqualTo(100_000L) },
                 { assertThat(response.body?.data?.items).hasSize(1) },
                 { assertThat(response.body?.data?.items?.first()?.quantity).isEqualTo(2L) },
+                { assertThat(response.body?.data?.paymentId).isNotNull() },
             )
         }
 
@@ -130,6 +167,8 @@ class OrderV1ApiE2ETest @Autowired constructor(
 
             val request = OrderV1Dto.CreateOrderRequest(
                 items = listOf(OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId = product.id, quantity = 1L)),
+                cardType = DEFAULT_CARD_TYPE,
+                cardNo = DEFAULT_CARD_NO,
             )
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
@@ -152,6 +191,8 @@ class OrderV1ApiE2ETest @Autowired constructor(
 
             val request = OrderV1Dto.CreateOrderRequest(
                 items = listOf(OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId = product.id, quantity = 5L)),
+                cardType = DEFAULT_CARD_TYPE,
+                cardNo = DEFAULT_CARD_NO,
             )
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
@@ -181,6 +222,8 @@ class OrderV1ApiE2ETest @Autowired constructor(
                 loginId = "testuser",
                 items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
                 couponId = null,
+                cardType = CardType.SAMSUNG,
+                cardNo = DEFAULT_CARD_NO,
             )
 
             val startAt = LocalDate.now().minusDays(1)
@@ -216,11 +259,13 @@ class OrderV1ApiE2ETest @Autowired constructor(
                 loginId = "testuser",
                 items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
                 couponId = null,
+                cardType = CardType.SAMSUNG,
+                cardNo = DEFAULT_CARD_NO,
             )
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
             val response = testRestTemplate.exchange(
-                "$ORDERS/${created.id}",
+                "$ORDERS/${created.order.id}",
                 HttpMethod.GET,
                 HttpEntity<Any>(authHeaders()),
                 responseType,
@@ -228,7 +273,7 @@ class OrderV1ApiE2ETest @Autowired constructor(
 
             assertAll(
                 { assertThat(response.statusCode).isEqualTo(HttpStatus.OK) },
-                { assertThat(response.body?.data?.id).isEqualTo(created.id) },
+                { assertThat(response.body?.data?.id).isEqualTo(created.order.id) },
             )
         }
 
@@ -244,11 +289,13 @@ class OrderV1ApiE2ETest @Autowired constructor(
                 loginId = "otheruser",
                 items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
                 couponId = null,
+                cardType = CardType.SAMSUNG,
+                cardNo = DEFAULT_CARD_NO,
             )
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
             val response = testRestTemplate.exchange(
-                "$ORDERS/${otherOrder.id}",
+                "$ORDERS/${otherOrder.order.id}",
                 HttpMethod.GET,
                 HttpEntity<Any>(authHeaders("testuser")),
                 responseType,
@@ -272,6 +319,8 @@ class OrderV1ApiE2ETest @Autowired constructor(
                 loginId = "testuser",
                 items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
                 couponId = null,
+                cardType = CardType.SAMSUNG,
+                cardNo = DEFAULT_CARD_NO,
             )
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<Map<String, Any>>>() {}
@@ -304,11 +353,13 @@ class OrderV1ApiE2ETest @Autowired constructor(
                 loginId = "testuser",
                 items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
                 couponId = null,
+                cardType = CardType.SAMSUNG,
+                cardNo = DEFAULT_CARD_NO,
             )
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<OrderAdminV1Dto.OrderResponse>>() {}
             val response = testRestTemplate.exchange(
-                "$ADMIN_ORDERS/${created.id}",
+                "$ADMIN_ORDERS/${created.order.id}",
                 HttpMethod.GET,
                 HttpEntity<Any>(adminHeaders()),
                 responseType,
@@ -316,7 +367,7 @@ class OrderV1ApiE2ETest @Autowired constructor(
 
             assertAll(
                 { assertThat(response.statusCode).isEqualTo(HttpStatus.OK) },
-                { assertThat(response.body?.data?.id).isEqualTo(created.id) },
+                { assertThat(response.body?.data?.id).isEqualTo(created.order.id) },
             )
         }
     }

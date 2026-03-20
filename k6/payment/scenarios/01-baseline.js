@@ -28,30 +28,22 @@ export const options = {
 };
 
 // ---- Setup ---------------------------------------------------------------
-// setup() runs once before VUs start; returned data is passed to default().
 export function setup() {
-  // 5 VU × ~30 iter/VU (throttled) = max ~150 orders needed
-  return runSetup(200);
+  return runSetup();
 }
 
 // ---- VU logic ------------------------------------------------------------
-const MAX_VUS = 5;
-
 export default function (data) {
-  const { loginId, password, orders } = data;
-
-  // Index: each VU cycles through its slice of orders
-  const idx = ((__VU - 1) + __ITER * MAX_VUS) % orders.length;
-  const orderId = orders[idx];
+  const { loginId, password, productId } = data;
 
   const headers = authHeaders(loginId, password);
   const payload = JSON.stringify({
-    orderId,
+    items: [{ productId, quantity: 1 }],
     cardType: 'SAMSUNG',
     cardNo: '1234567890123456',
   });
 
-  const res = http.post(`${BASE_URL}/api/v1/payments`, payload, { headers });
+  const res = http.post(`${BASE_URL}/api/v1/orders`, payload, { headers });
 
   const isPgFail = check(res, {
     'pg_fail (PG error → 400/500)': (r) =>
@@ -70,7 +62,11 @@ export default function (data) {
 
   // Success is also valid (PG simulator returns SUCCESS 60% of the time)
   check(res, {
-    'payment_success (200)': (r) => r.status === 200,
+    'order_success (200)': (r) => r.status === 200,
+    'response_has_paymentId': (r) => {
+      if (r.status !== 200) return true;
+      try { return r.json().data.paymentId != null; } catch (_) { return false; }
+    },
   });
 
   cbOpenRate.add(isCbOpen ? 1 : 0);

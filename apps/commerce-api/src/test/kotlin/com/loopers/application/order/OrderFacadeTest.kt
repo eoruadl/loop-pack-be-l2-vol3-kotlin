@@ -1,5 +1,7 @@
 package com.loopers.application.order
 
+import com.loopers.application.payment.PaymentFacade
+import com.loopers.application.payment.PaymentInfo
 import com.loopers.domain.coupon.CouponTemplateService
 import com.loopers.domain.coupon.UserCouponService
 import com.loopers.domain.order.OrderItemService
@@ -15,6 +17,7 @@ import com.loopers.domain.order.Quantity
 import com.loopers.domain.order.DiscountAmount
 import com.loopers.domain.order.OriginalAmount
 import com.loopers.domain.order.TotalAmount
+import com.loopers.domain.payment.CardType
 import com.loopers.domain.product.Description
 import com.loopers.domain.product.ImageUrl as ProductImageUrl
 import com.loopers.domain.product.Name
@@ -57,12 +60,13 @@ class OrderFacadeTest {
     private val userService: UserService = mockk()
     private val userCouponService: UserCouponService = mockk()
     private val couponTemplateService: CouponTemplateService = mockk()
+    private val paymentFacade: PaymentFacade = mockk()
 
     private lateinit var orderFacade: OrderFacade
 
     @BeforeEach
     fun setUp() {
-        orderFacade = OrderFacade(orderService, orderItemService, productService, productInventoryService, userService, userCouponService, couponTemplateService)
+        orderFacade = OrderFacade(orderService, orderItemService, productService, productInventoryService, userService, userCouponService, couponTemplateService, paymentFacade)
     }
 
     private fun createUserModel(
@@ -135,33 +139,40 @@ class OrderFacadeTest {
     inner class CreateOrder {
 
         @Test
-        fun `주문 생성 시 OrderInfo를 반환한다`() {
+        fun `주문 생성 시 OrderWithPaymentInfo를 반환한다`() {
             // given
             val user = createUserModel()
             val product = createProductModel(price = 10_000L)
             val inventory = createInventoryModel()
             val order = createOrderModel(totalAmount = 10_000L)
             val items = listOf(createOrderItemModel())
+            val paymentInfo = mockk<PaymentInfo>()
 
+            every { paymentInfo.id } returns 100L
             every { userService.getUserByLoginId("testuser") } returns user
             every { productService.getProductById(1L) } returns product
             every { productInventoryService.decreaseStock(1L, 1L) } returns inventory
             every { orderService.createOrder(any(), any(), any(), isNull(), any()) } returns order
             every { orderItemService.saveAll(any()) } returns items
+            every { paymentFacade.requestPayment("testuser", any(), CardType.SAMSUNG, "1234567890123456") } returns paymentInfo
 
             // when
             val result = orderFacade.createOrder(
                 loginId = "testuser",
                 items = listOf(OrderFacade.OrderItemRequest(productId = 1L, quantity = 1L)),
                 couponId = null,
+                cardType = CardType.SAMSUNG,
+                cardNo = "1234567890123456",
             )
 
             // then
             assertNotNull(result)
-            assertEquals(order.userId, result.userId)
-            assertEquals(order.totalAmount.value, result.totalAmount)
-            assertEquals(1, result.items.size)
+            assertEquals(order.userId, result.order.userId)
+            assertEquals(order.totalAmount.value, result.order.totalAmount)
+            assertEquals(1, result.order.items.size)
+            assertEquals(100L, result.paymentId)
             verify(exactly = 1) { orderService.createOrder(user.id, any(), any(), isNull(), any()) }
+            verify(exactly = 1) { paymentFacade.requestPayment("testuser", any(), CardType.SAMSUNG, "1234567890123456") }
         }
 
         @Test
@@ -183,12 +194,15 @@ class OrderFacadeTest {
                     loginId = "testuser",
                     items = listOf(OrderFacade.OrderItemRequest(productId = 1L, quantity = 1L)),
                     couponId = null,
+                    cardType = CardType.SAMSUNG,
+                    cardNo = "1234567890123456",
                 )
             }
 
             // then
             assertEquals(ErrorType.BAD_REQUEST, exception.errorType)
             verify(exactly = 0) { orderService.createOrder(any(), any(), any(), isNull(), any()) }
+            verify(exactly = 0) { paymentFacade.requestPayment(any(), any(), any(), any()) }
         }
     }
 

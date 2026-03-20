@@ -7,7 +7,6 @@ import com.loopers.application.payment.PgPaymentRequest
 import com.loopers.application.payment.PgPaymentResponse
 import com.loopers.application.payment.PgPaymentStatusResponse
 import com.loopers.application.payment.PgPaymentTimeoutException
-import com.loopers.application.order.OrderFacade
 import com.loopers.application.product.ProductFacade
 import com.loopers.domain.brand.BrandService
 import com.loopers.domain.payment.CardType
@@ -21,13 +20,13 @@ import com.loopers.domain.user.UserModel
 import com.loopers.infrastructure.payment.PaymentJpaRepository
 import com.loopers.infrastructure.user.UserJpaRepository
 import com.loopers.interfaces.api.ApiResponse
+import com.loopers.interfaces.api.order.OrderV1Dto
 import com.loopers.utils.DatabaseCleanUp
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertAll
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
@@ -39,13 +38,13 @@ import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
+import java.util.concurrent.CompletableFuture
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class PaymentV1ApiE2ETest @Autowired constructor(
     private val testRestTemplate: TestRestTemplate,
     private val brandService: BrandService,
     private val productFacade: ProductFacade,
-    private val orderFacade: OrderFacade,
     private val userJpaRepository: UserJpaRepository,
     private val paymentJpaRepository: PaymentJpaRepository,
     private val passwordEncryptor: PasswordEncryptor,
@@ -54,6 +53,7 @@ class PaymentV1ApiE2ETest @Autowired constructor(
 ) {
     companion object {
         private const val PAYMENTS = "/api/v1/payments"
+        private const val ORDERS = "/api/v1/orders"
         private const val TEST_PASSWORD = "Password123!"
     }
 
@@ -69,25 +69,29 @@ class PaymentV1ApiE2ETest @Autowired constructor(
         var shouldTimeout = false
         var pgStatus = "SUCCESS"
 
-        override fun requestPayment(request: PgPaymentRequest): PgPaymentResponse {
-            if (shouldTimeout) throw PgPaymentTimeoutException("fake timeout")
-            if (shouldFailRequest) throw PgPaymentFailException("fake failure")
-            return PgPaymentResponse(pgTransactionId = "fake-pg-tx-${request.orderId}")
+        override fun requestPayment(request: PgPaymentRequest): CompletableFuture<PgPaymentResponse> {
+            if (shouldTimeout) return CompletableFuture.failedFuture(PgPaymentTimeoutException("fake timeout"))
+            if (shouldFailRequest) return CompletableFuture.failedFuture(PgPaymentFailException("fake failure"))
+            return CompletableFuture.completedFuture(PgPaymentResponse(pgTransactionId = "fake-pg-tx-${request.orderId}"))
         }
 
-        override fun getPayment(pgTxId: String, userId: Long): PgPaymentStatusResponse {
-            return PgPaymentStatusResponse(
-                pgTransactionId = pgTxId,
-                status = pgStatus,
-                failureCode = if (pgStatus == "FAILED") PgFailureCode.UNKNOWN else null,
+        override fun getPayment(pgTxId: String, userId: Long): CompletableFuture<PgPaymentStatusResponse> {
+            return CompletableFuture.completedFuture(
+                PgPaymentStatusResponse(
+                    pgTransactionId = pgTxId,
+                    status = pgStatus,
+                    failureCode = if (pgStatus == "FAILED") PgFailureCode.UNKNOWN else null,
+                )
             )
         }
 
-        override fun getPaymentByOrderId(orderId: Long, userId: Long): PgPaymentStatusResponse? {
-            return PgPaymentStatusResponse(
-                pgTransactionId = "fake-pg-tx-ORDER-$orderId",
-                status = pgStatus,
-                failureCode = if (pgStatus == "FAILED") PgFailureCode.UNKNOWN else null,
+        override fun getPaymentByOrderId(orderId: Long, userId: Long): CompletableFuture<PgPaymentStatusResponse?> {
+            return CompletableFuture.completedFuture(
+                PgPaymentStatusResponse(
+                    pgTransactionId = "fake-pg-tx-ORDER-$orderId",
+                    status = pgStatus,
+                    failureCode = if (pgStatus == "FAILED") PgFailureCode.UNKNOWN else null,
+                )
             )
         }
 
@@ -140,150 +144,19 @@ class PaymentV1ApiE2ETest @Autowired constructor(
         set("X-Loopers-LoginPw", TEST_PASSWORD)
     }
 
-    private fun requestPaymentViaApi(orderId: Long): PaymentV1Dto.PaymentResponse? {
-        val request = PaymentV1Dto.CreatePaymentRequest(
-            orderId = orderId,
+    private fun createOrderWithPayment(productId: Long): OrderV1Dto.OrderResponse? {
+        val request = OrderV1Dto.CreateOrderRequest(
+            items = listOf(OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId = productId, quantity = 1L)),
             cardType = CardType.SAMSUNG.name,
             cardNo = "1234-5678-9012-3456",
         )
-        val responseType = object : ParameterizedTypeReference<ApiResponse<PaymentV1Dto.PaymentResponse>>() {}
+        val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
         return testRestTemplate.exchange(
-            PAYMENTS,
+            ORDERS,
             HttpMethod.POST,
             HttpEntity(request, authHeaders()),
             responseType,
         ).body?.data
-    }
-
-    @DisplayName("POST /api/v1/payments")
-    @Nested
-    inner class RequestPayment {
-
-        @Test
-        @DisplayName("정상 결제 요청 시 200과 PENDING 상태의 PaymentResponse를 반환하고 DB에 결제 레코드가 생성된다")
-        fun requestPayment_whenValid_thenReturnsPendingPayment() {
-            createUser()
-            val brand = createBrand()
-            val product = createProduct(brand.id)
-            val order = orderFacade.createOrder(
-                loginId = "testuser",
-                items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
-                couponId = null,
-            )
-
-            val request = PaymentV1Dto.CreatePaymentRequest(
-                orderId = order.id,
-                cardType = CardType.SAMSUNG.name,
-                cardNo = "1234-5678-9012-3456",
-            )
-
-            val responseType = object : ParameterizedTypeReference<ApiResponse<PaymentV1Dto.PaymentResponse>>() {}
-            val response = testRestTemplate.exchange(
-                PAYMENTS,
-                HttpMethod.POST,
-                HttpEntity(request, authHeaders()),
-                responseType,
-            )
-
-            assertAll(
-                { assertThat(response.statusCode).isEqualTo(HttpStatus.OK) },
-                { assertThat(response.body?.data?.status).isEqualTo(PaymentStatus.PENDING) },
-                { assertThat(response.body?.data?.orderId).isEqualTo(order.id) },
-            )
-
-            val payments = paymentJpaRepository.findAll()
-            assertThat(payments).hasSize(1)
-        }
-
-        @Test
-        @DisplayName("인증 없이 요청 시 401을 반환한다")
-        fun requestPayment_whenNoAuth_thenReturns401() {
-            val request = PaymentV1Dto.CreatePaymentRequest(
-                orderId = 1L,
-                cardType = CardType.SAMSUNG.name,
-                cardNo = "1234-5678-9012-3456",
-            )
-
-            val responseType = object : ParameterizedTypeReference<ApiResponse<PaymentV1Dto.PaymentResponse>>() {}
-            val response = testRestTemplate.exchange(
-                PAYMENTS,
-                HttpMethod.POST,
-                HttpEntity(request),
-                responseType,
-            )
-
-            assertThat(response.statusCode).isEqualTo(HttpStatus.UNAUTHORIZED)
-        }
-
-        @Test
-        @DisplayName("동일 주문에 PENDING 결제가 이미 존재할 때 409를 반환한다")
-        fun requestPayment_whenActivePaymentExists_thenReturns409() {
-            createUser()
-            val brand = createBrand()
-            val product = createProduct(brand.id)
-            val order = orderFacade.createOrder(
-                loginId = "testuser",
-                items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
-                couponId = null,
-            )
-
-            // 첫 번째 결제 요청 — 성공
-            requestPaymentViaApi(order.id)
-
-            // 두 번째 결제 요청 — PENDING 결제가 이미 존재
-            val responseType = object : ParameterizedTypeReference<ApiResponse<PaymentV1Dto.PaymentResponse>>() {}
-            val response = testRestTemplate.exchange(
-                PAYMENTS,
-                HttpMethod.POST,
-                HttpEntity(
-                    PaymentV1Dto.CreatePaymentRequest(
-                        orderId = order.id,
-                        cardType = CardType.SAMSUNG.name,
-                        cardNo = "1234-5678-9012-3456",
-                    ),
-                    authHeaders(),
-                ),
-                responseType,
-            )
-
-            assertThat(response.statusCode).isEqualTo(HttpStatus.CONFLICT)
-            assertThat(paymentJpaRepository.findAll()).hasSize(1)
-        }
-
-        @Test
-        @DisplayName("PG 요청 실패 시 400을 반환하고 Payment가 FAILED 상태로 저장된다")
-        fun requestPayment_whenPgFails_thenReturns400AndPaymentFailed() {
-            fakePgPaymentClient.shouldFailRequest = true
-
-            createUser()
-            val brand = createBrand()
-            val product = createProduct(brand.id)
-            val order = orderFacade.createOrder(
-                loginId = "testuser",
-                items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
-                couponId = null,
-            )
-
-            val request = PaymentV1Dto.CreatePaymentRequest(
-                orderId = order.id,
-                cardType = CardType.SAMSUNG.name,
-                cardNo = "1234-5678-9012-3456",
-            )
-
-            val responseType = object : ParameterizedTypeReference<ApiResponse<PaymentV1Dto.PaymentResponse>>() {}
-            val response = testRestTemplate.exchange(
-                PAYMENTS,
-                HttpMethod.POST,
-                HttpEntity(request, authHeaders()),
-                responseType,
-            )
-
-            assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
-
-            val payments = paymentJpaRepository.findAll()
-            assertThat(payments).hasSize(1)
-            assertThat(payments[0].status).isEqualTo(PaymentStatus.FAILED)
-        }
     }
 
     @DisplayName("POST /api/v1/payments/callback")
@@ -296,14 +169,9 @@ class PaymentV1ApiE2ETest @Autowired constructor(
             createUser()
             val brand = createBrand()
             val product = createProduct(brand.id)
-            val order = orderFacade.createOrder(
-                loginId = "testuser",
-                items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
-                couponId = null,
-            )
 
-            // 결제 생성
-            requestPaymentViaApi(order.id)
+            // 주문+결제 생성 (PG 응답 성공, 콜백 미수신 → PENDING 유지)
+            createOrderWithPayment(product.id)
 
             val payments = paymentJpaRepository.findAll()
             val pgTxId = payments[0].pgTxId!!.value
@@ -311,7 +179,7 @@ class PaymentV1ApiE2ETest @Autowired constructor(
             // 콜백 수신
             val callbackRequest = PaymentV1Dto.PgCallbackRequest(
                 transactionKey = pgTxId,
-                orderId = "ORDER-${order.id}",
+                orderId = "ORDER-${payments[0].orderId}",
                 cardType = CardType.SAMSUNG.name,
                 cardNo = "1234-5678-9012-3456",
                 amount = 50_000L,
@@ -340,21 +208,12 @@ class PaymentV1ApiE2ETest @Autowired constructor(
         @Test
         @DisplayName("PENDING 결제 복구 요청 시 PG 상태 조회 후 동기화된다")
         fun recoverPayment_whenPending_thenSynchronized() {
-            // 타임아웃 시나리오 — pgTxId 없이 PENDING 결제 생성
-            fakePgPaymentClient.shouldTimeout = true
-            fakePgPaymentClient.pgStatus = "SUCCESS"
-
             createUser()
             val brand = createBrand()
             val product = createProduct(brand.id)
-            val order = orderFacade.createOrder(
-                loginId = "testuser",
-                items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
-                couponId = null,
-            )
 
-            requestPaymentViaApi(order.id) // 타임아웃 → PENDING 유지
-            fakePgPaymentClient.shouldTimeout = false
+            // 주문+결제 생성 (PG 응답 성공, 콜백 미수신 → PENDING 유지)
+            createOrderWithPayment(product.id)
 
             val payments = paymentJpaRepository.findAll()
             assertThat(payments[0].status).isEqualTo(PaymentStatus.PENDING)

@@ -36,29 +36,22 @@ export const options = {
 
 // ---- Setup ----------------------------------------------------------------
 export function setup() {
-  // 20 VU × ~15 iter (no sleep) ≒ up to 300 iterations
-  // Once CB opens most orders won't be consumed (orders stay PENDING_PAYMENT on fallback)
-  return runSetup(300);
+  return runSetup();
 }
 
 // ---- VU logic -------------------------------------------------------------
-const MAX_VUS = 20;
-
 export default function (data) {
-  const { loginId, password, orders } = data;
-
-  const idx = ((__VU - 1) + __ITER * MAX_VUS) % orders.length;
-  const orderId = orders[idx];
+  const { loginId, password, productId } = data;
 
   const headers = authHeaders(loginId, password);
   const payload = JSON.stringify({
-    orderId,
+    items: [{ productId, quantity: 1 }],
     cardType: 'KB',
     cardNo: '9876543210987654',
   });
 
   const start = Date.now();
-  const res = http.post(`${BASE_URL}/api/v1/payments`, payload, { headers });
+  const res = http.post(`${BASE_URL}/api/v1/orders`, payload, { headers });
   const elapsed = Date.now() - start;
 
   // Classify response
@@ -76,7 +69,7 @@ export default function (data) {
   }
 
   check(res, {
-    'payment_success (200)':    (r) => r.status === 200,
+    'order_success (200)':      (r) => r.status === 200,
     'pg_fail (400/500 normal)': (r) => (r.status === 400 || r.status === 500) && !isFallback,
     'cb_open_fallback (500)':   (_) => isFallback,
   });

@@ -11,33 +11,9 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
 
+
 @Tag(name = "Payment V1 API", description = "결제 API")
 interface PaymentV1ApiSpec {
-
-    @Operation(
-        summary = "결제 요청",
-        description = "주문에 대한 PG 결제를 요청합니다.",
-        parameters = [
-            Parameter(
-                name = "X-Loopers-LoginId",
-                description = "사용자 로그인 ID",
-                required = true,
-                schema = Schema(type = "string"),
-                `in` = ParameterIn.HEADER,
-            ),
-            Parameter(
-                name = "X-Loopers-LoginPw",
-                description = "사용자 비밀번호",
-                required = true,
-                schema = Schema(type = "string"),
-                `in` = ParameterIn.HEADER,
-            ),
-        ],
-    )
-    fun requestPayment(
-        @Parameter(hidden = true) @RequireAuth authenticatedUser: AuthenticatedUser,
-        @RequestBody request: PaymentV1Dto.CreatePaymentRequest,
-    ): ApiResponse<PaymentV1Dto.PaymentResponse>
 
     @Operation(
         summary = "PG 콜백 수신",
