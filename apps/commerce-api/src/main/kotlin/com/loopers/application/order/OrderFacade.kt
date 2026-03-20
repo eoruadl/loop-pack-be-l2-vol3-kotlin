@@ -1,6 +1,5 @@
 package com.loopers.application.order
 
-import com.loopers.application.payment.PaymentFacade
 import com.loopers.domain.coupon.CouponTemplateService
 import com.loopers.domain.coupon.UserCouponService
 import com.loopers.domain.order.ImageUrl
@@ -10,7 +9,6 @@ import com.loopers.domain.order.OrderService
 import com.loopers.domain.order.Price
 import com.loopers.domain.order.ProductName
 import com.loopers.domain.order.Quantity
-import com.loopers.domain.payment.CardType
 import com.loopers.domain.product.ProductInventoryService
 import com.loopers.domain.product.ProductService
 import com.loopers.domain.user.UserService
@@ -33,10 +31,9 @@ class OrderFacade(
     private val userService: UserService,
     private val userCouponService: UserCouponService,
     private val couponTemplateService: CouponTemplateService,
-    private val paymentFacade: PaymentFacade,
 ) {
     @Transactional
-    fun createOrder(loginId: String, items: List<OrderItemRequest>, couponId: Long?, cardType: CardType, cardNo: String): OrderWithPaymentInfo {
+    fun createOrder(loginId: String, items: List<OrderItemRequest>, couponId: Long?): OrderInfo {
         try {
             val user = userService.getUserByLoginId(loginId)
 
@@ -78,10 +75,7 @@ class OrderFacade(
                     )
                 }
             )
-            val orderInfo = OrderInfo.from(order, savedItems)
-
-            val paymentInfo = paymentFacade.requestPayment(loginId, orderInfo.id, cardType, cardNo)
-            return OrderWithPaymentInfo(orderInfo, paymentInfo.id)
+            return OrderInfo.from(order, savedItems)
         } catch (e: ObjectOptimisticLockingFailureException) {
             throw CoreException(ErrorType.CONFLICT, "쿠폰이 이미 사용되었습니다.")
         }
@@ -121,6 +115,4 @@ class OrderFacade(
         val productId: Long,
         val quantity: Long,
     )
-
-    data class OrderWithPaymentInfo(val order: OrderInfo, val paymentId: Long)
 }

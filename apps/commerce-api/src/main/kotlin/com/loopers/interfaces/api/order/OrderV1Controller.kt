@@ -1,6 +1,7 @@
 package com.loopers.interfaces.api.order
 
 import com.loopers.application.order.OrderFacade
+import com.loopers.application.payment.PaymentFacade
 import com.loopers.domain.payment.CardType
 import com.loopers.interfaces.api.ApiResponse
 import com.loopers.interfaces.api.auth.AuthenticatedUser
@@ -22,6 +23,7 @@ import java.time.LocalDate
 @RequestMapping("/api/v1/orders")
 class OrderV1Controller(
     private val orderFacade: OrderFacade,
+    private val paymentFacade: PaymentFacade,
 ) : OrderV1ApiSpec {
 
     @PostMapping
@@ -32,14 +34,18 @@ class OrderV1Controller(
         val cardType = runCatching { CardType.valueOf(request.cardType) }
             .getOrElse { throw CoreException(ErrorType.BAD_REQUEST, "유효하지 않은 카드 타입입니다: ${request.cardType}") }
 
-        return orderFacade.createOrder(
+        val orderInfo = orderFacade.createOrder(
             loginId = authenticatedUser.loginId,
             items = request.items.map { OrderFacade.OrderItemRequest(it.productId, it.quantity) },
             couponId = request.couponId,
+        )
+        val paymentInfo = paymentFacade.requestPayment(
+            loginId = authenticatedUser.loginId,
+            orderId = orderInfo.id,
             cardType = cardType,
             cardNo = request.cardNo,
-        ).let { OrderV1Dto.OrderResponse.from(it.order, it.paymentId) }
-         .let { ApiResponse.success(it) }
+        )
+        return ApiResponse.success(OrderV1Dto.OrderResponse.from(orderInfo, paymentInfo.id))
     }
 
     @GetMapping
