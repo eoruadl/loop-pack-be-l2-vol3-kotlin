@@ -31,7 +31,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import java.time.ZonedDateTime
-import java.util.concurrent.CompletableFuture
 import kotlin.test.assertEquals
 
 @ExtendWith(MockKExtension::class)
@@ -165,7 +164,7 @@ class PaymentFacadeTest {
             every { userService.getUserByLoginId("testuser") } returns user
             every { orderService.getOrderById(1L) } returns order
             every { paymentRepository.save(any()) } answers { firstArg() }
-            every { pgPaymentPort.requestPayment(any()) } returns CompletableFuture.completedFuture(PgPaymentResponse("pg-tx-123"))
+            every { pgPaymentPort.requestPayment(any()) } returns PgPaymentResponse("pg-tx-123")
             every { paymentRepository.findById(any()) } returns payment
 
             val result = paymentFacade.requestPayment(
@@ -187,7 +186,7 @@ class PaymentFacadeTest {
             every { userService.getUserByLoginId("testuser") } returns user
             every { orderService.getOrderById(1L) } returns order
             every { paymentRepository.save(any()) } answers { firstArg() }
-            every { pgPaymentPort.requestPayment(any()) } returns CompletableFuture.failedFuture(PgPaymentFailException("4xx error"))
+            every { pgPaymentPort.requestPayment(any()) } throws PgPaymentFailException("4xx error")
             every { paymentRepository.findById(any()) } returns payment
 
             val exception = assertThrows<CoreException> {
@@ -211,7 +210,7 @@ class PaymentFacadeTest {
             every { userService.getUserByLoginId("testuser") } returns user
             every { orderService.getOrderById(1L) } returns order
             every { paymentRepository.save(any()) } answers { firstArg() }
-            every { pgPaymentPort.requestPayment(any()) } returns CompletableFuture.failedFuture(PgPaymentTimeoutException("timeout"))
+            every { pgPaymentPort.requestPayment(any()) } throws PgPaymentTimeoutException("timeout")
 
             val exception = assertThrows<CoreException> {
                 paymentFacade.requestPayment(

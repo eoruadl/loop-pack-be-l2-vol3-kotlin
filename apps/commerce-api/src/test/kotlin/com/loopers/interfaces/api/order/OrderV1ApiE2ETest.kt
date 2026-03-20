@@ -36,7 +36,6 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import java.time.LocalDate
-import java.util.concurrent.CompletableFuture
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class OrderV1ApiE2ETest @Autowired constructor(
@@ -66,18 +65,14 @@ class OrderV1ApiE2ETest @Autowired constructor(
     }
 
     class FakePgPaymentClient : PgPaymentPort {
-        override fun requestPayment(request: PgPaymentRequest): CompletableFuture<PgPaymentResponse> =
-            CompletableFuture.completedFuture(PgPaymentResponse(pgTransactionId = "fake-pg-tx-${request.orderId}"))
+        override fun requestPayment(request: PgPaymentRequest): PgPaymentResponse =
+            PgPaymentResponse(pgTransactionId = "fake-pg-tx-${request.orderId}")
 
-        override fun getPayment(pgTxId: String, userId: Long): CompletableFuture<PgPaymentStatusResponse> =
-            CompletableFuture.completedFuture(
-                PgPaymentStatusResponse(pgTransactionId = pgTxId, status = "SUCCESS", failureCode = null)
-            )
+        override fun getPayment(pgTxId: String, userId: Long): PgPaymentStatusResponse =
+            PgPaymentStatusResponse(pgTransactionId = pgTxId, status = "SUCCESS", failureCode = null)
 
-        override fun getPaymentByOrderId(orderId: Long, userId: Long): CompletableFuture<PgPaymentStatusResponse?> =
-            CompletableFuture.completedFuture(
-                PgPaymentStatusResponse(pgTransactionId = "fake-pg-tx-ORDER-$orderId", status = "SUCCESS", failureCode = null)
-            )
+        override fun getPaymentByOrderId(orderId: Long, userId: Long): PgPaymentStatusResponse? =
+            PgPaymentStatusResponse(pgTransactionId = "fake-pg-tx-ORDER-$orderId", status = "SUCCESS", failureCode = null)
     }
 
     @AfterEach
@@ -222,8 +217,6 @@ class OrderV1ApiE2ETest @Autowired constructor(
                 loginId = "testuser",
                 items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
                 couponId = null,
-                cardType = CardType.SAMSUNG,
-                cardNo = DEFAULT_CARD_NO,
             )
 
             val startAt = LocalDate.now().minusDays(1)
@@ -259,13 +252,11 @@ class OrderV1ApiE2ETest @Autowired constructor(
                 loginId = "testuser",
                 items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
                 couponId = null,
-                cardType = CardType.SAMSUNG,
-                cardNo = DEFAULT_CARD_NO,
             )
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
             val response = testRestTemplate.exchange(
-                "$ORDERS/${created.order.id}",
+                "$ORDERS/${created.id}",
                 HttpMethod.GET,
                 HttpEntity<Any>(authHeaders()),
                 responseType,
@@ -273,7 +264,7 @@ class OrderV1ApiE2ETest @Autowired constructor(
 
             assertAll(
                 { assertThat(response.statusCode).isEqualTo(HttpStatus.OK) },
-                { assertThat(response.body?.data?.id).isEqualTo(created.order.id) },
+                { assertThat(response.body?.data?.id).isEqualTo(created.id) },
             )
         }
 
@@ -289,13 +280,11 @@ class OrderV1ApiE2ETest @Autowired constructor(
                 loginId = "otheruser",
                 items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
                 couponId = null,
-                cardType = CardType.SAMSUNG,
-                cardNo = DEFAULT_CARD_NO,
             )
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
             val response = testRestTemplate.exchange(
-                "$ORDERS/${otherOrder.order.id}",
+                "$ORDERS/${otherOrder.id}",
                 HttpMethod.GET,
                 HttpEntity<Any>(authHeaders("testuser")),
                 responseType,
@@ -319,8 +308,6 @@ class OrderV1ApiE2ETest @Autowired constructor(
                 loginId = "testuser",
                 items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
                 couponId = null,
-                cardType = CardType.SAMSUNG,
-                cardNo = DEFAULT_CARD_NO,
             )
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<Map<String, Any>>>() {}
@@ -353,13 +340,11 @@ class OrderV1ApiE2ETest @Autowired constructor(
                 loginId = "testuser",
                 items = listOf(OrderFacade.OrderItemRequest(productId = product.id, quantity = 1L)),
                 couponId = null,
-                cardType = CardType.SAMSUNG,
-                cardNo = DEFAULT_CARD_NO,
             )
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<OrderAdminV1Dto.OrderResponse>>() {}
             val response = testRestTemplate.exchange(
-                "$ADMIN_ORDERS/${created.order.id}",
+                "$ADMIN_ORDERS/${created.id}",
                 HttpMethod.GET,
                 HttpEntity<Any>(adminHeaders()),
                 responseType,
@@ -367,7 +352,7 @@ class OrderV1ApiE2ETest @Autowired constructor(
 
             assertAll(
                 { assertThat(response.statusCode).isEqualTo(HttpStatus.OK) },
-                { assertThat(response.body?.data?.id).isEqualTo(created.order.id) },
+                { assertThat(response.body?.data?.id).isEqualTo(created.id) },
             )
         }
     }

@@ -38,7 +38,6 @@ import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
-import java.util.concurrent.CompletableFuture
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class PaymentV1ApiE2ETest @Autowired constructor(
@@ -69,29 +68,25 @@ class PaymentV1ApiE2ETest @Autowired constructor(
         var shouldTimeout = false
         var pgStatus = "SUCCESS"
 
-        override fun requestPayment(request: PgPaymentRequest): CompletableFuture<PgPaymentResponse> {
-            if (shouldTimeout) return CompletableFuture.failedFuture(PgPaymentTimeoutException("fake timeout"))
-            if (shouldFailRequest) return CompletableFuture.failedFuture(PgPaymentFailException("fake failure"))
-            return CompletableFuture.completedFuture(PgPaymentResponse(pgTransactionId = "fake-pg-tx-${request.orderId}"))
+        override fun requestPayment(request: PgPaymentRequest): PgPaymentResponse {
+            if (shouldTimeout) throw PgPaymentTimeoutException("fake timeout")
+            if (shouldFailRequest) throw PgPaymentFailException("fake failure")
+            return PgPaymentResponse(pgTransactionId = "fake-pg-tx-${request.orderId}")
         }
 
-        override fun getPayment(pgTxId: String, userId: Long): CompletableFuture<PgPaymentStatusResponse> {
-            return CompletableFuture.completedFuture(
-                PgPaymentStatusResponse(
-                    pgTransactionId = pgTxId,
-                    status = pgStatus,
-                    failureCode = if (pgStatus == "FAILED") PgFailureCode.UNKNOWN else null,
-                )
+        override fun getPayment(pgTxId: String, userId: Long): PgPaymentStatusResponse {
+            return PgPaymentStatusResponse(
+                pgTransactionId = pgTxId,
+                status = pgStatus,
+                failureCode = if (pgStatus == "FAILED") PgFailureCode.UNKNOWN else null,
             )
         }
 
-        override fun getPaymentByOrderId(orderId: Long, userId: Long): CompletableFuture<PgPaymentStatusResponse?> {
-            return CompletableFuture.completedFuture(
-                PgPaymentStatusResponse(
-                    pgTransactionId = "fake-pg-tx-ORDER-$orderId",
-                    status = pgStatus,
-                    failureCode = if (pgStatus == "FAILED") PgFailureCode.UNKNOWN else null,
-                )
+        override fun getPaymentByOrderId(orderId: Long, userId: Long): PgPaymentStatusResponse? {
+            return PgPaymentStatusResponse(
+                pgTransactionId = "fake-pg-tx-ORDER-$orderId",
+                status = pgStatus,
+                failureCode = if (pgStatus == "FAILED") PgFailureCode.UNKNOWN else null,
             )
         }
 
