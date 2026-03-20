@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.ZonedDateTime
+import java.util.concurrent.ExecutionException
 
 @Component
 class PaymentRecoveryFacade(
@@ -23,13 +24,17 @@ class PaymentRecoveryFacade(
         val payment = paymentService.getPaymentById(paymentId)
         if (payment.status != PaymentStatus.PENDING) return
 
-        val pgStatusResponse = if (payment.pgTxId != null) {
-            pgPaymentPort.getPayment(payment.pgTxId!!.value, payment.userId)
-        } else {
-            pgPaymentPort.getPaymentByOrderId(payment.orderId, payment.userId) ?: run {
-                paymentService.failPayment(payment.id)
-                return
+        val pgStatusResponse = try {
+            if (payment.pgTxId != null) {
+                pgPaymentPort.getPayment(payment.pgTxId!!.value, payment.userId).get()
+            } else {
+                pgPaymentPort.getPaymentByOrderId(payment.orderId, payment.userId).get() ?: run {
+                    paymentService.failPayment(payment.id)
+                    return
+                }
             }
+        } catch (e: ExecutionException) {
+            throw e.cause ?: e
         }
 
         when (pgStatusResponse.status) {

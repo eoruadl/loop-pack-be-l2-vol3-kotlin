@@ -31,13 +31,23 @@ springdoc:
 
 resilience4j:
   circuitbreaker:
+    circuitBreakerAspectOrder: 1
     instances:
       pg-payment:
         slidingWindowSize: 10
         failureRateThreshold: 50
         waitDurationInOpenState: 30s
         permittedNumberOfCallsInHalfOpenState: 3
+  retry:
+    retryAspectOrder: 2
+    instances:
+      pg-payment:
+        maxAttempts: 3
+        waitDuration: 500ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 1.5
   timelimiter:
+    timeLimiterAspectOrder: 3
     instances:
       pg-payment:
         timeoutDuration: 3s

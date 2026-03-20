@@ -1,9 +1,11 @@
 package com.loopers.application.payment
 
+import java.util.concurrent.CompletableFuture
+
 interface PgPaymentPort {
-    fun requestPayment(request: PgPaymentRequest): PgPaymentResponse
-    fun getPayment(pgTxId: String, userId: Long): PgPaymentStatusResponse
-    fun getPaymentByOrderId(orderId: Long, userId: Long): PgPaymentStatusResponse?
+    fun requestPayment(request: PgPaymentRequest): CompletableFuture<PgPaymentResponse>
+    fun getPayment(pgTxId: String, userId: Long): CompletableFuture<PgPaymentStatusResponse>
+    fun getPaymentByOrderId(orderId: Long, userId: Long): CompletableFuture<PgPaymentStatusResponse?>
 }
 
 data class PgPaymentRequest(

@@ -11,6 +11,7 @@ import com.loopers.support.error.ErrorType
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.util.concurrent.ExecutionException
 
 @Component
 class PaymentFacade(
@@ -51,14 +52,16 @@ class PaymentFacade(
                     cardNo = cardNo,
                     callbackUrl = callbackUrl,
                 )
-            )
+            ).get()
             paymentService.setPgTransactionId(payment.id, pgResponse.pgTransactionId)
-        } catch (e: PgPaymentFailException) {
-            paymentService.failPayment(payment.id)
-            throw CoreException(ErrorType.BAD_REQUEST, "PG 결제 요청에 실패했습니다.")
-        } catch (e: PgPaymentTimeoutException) {
-            // PENDING 유지 — 복구 로직에 위임
-            throw CoreException(ErrorType.INTERNAL_ERROR, "PG 결제 요청이 타임아웃되었습니다.")
+        } catch (e: ExecutionException) {
+            when (e.cause) {
+                is PgPaymentFailException -> {
+                    paymentService.failPayment(payment.id)
+                    throw CoreException(ErrorType.BAD_REQUEST, "PG 결제 요청에 실패했습니다.")
+                }
+                else -> throw CoreException(ErrorType.INTERNAL_ERROR, "PG 결제 요청이 타임아웃되었습니다.")
+            }
         }
 
         return PaymentInfo.from(paymentService.getPaymentById(payment.id))
