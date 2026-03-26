@@ -47,4 +47,12 @@ class OrderService(
     @Transactional(readOnly = true)
     fun getAllOrders(pageable: Pageable): Page<OrderModel> =
         orderRepository.findAll(pageable)
+
+    @Transactional
+    fun payOrder(orderId: Long): OrderModel {
+        val order = orderRepository.findById(orderId)
+            ?: throw CoreException(ErrorType.NOT_FOUND, "주문을 찾을 수 없습니다.")
+        order.pay()
+        return orderRepository.save(order)
+    }
 }

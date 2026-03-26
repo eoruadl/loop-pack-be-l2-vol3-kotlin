@@ -7,6 +7,8 @@ class OrderV1Dto {
     data class CreateOrderRequest(
         val items: List<OrderItemRequest>,
         val couponId: Long? = null,
+        val cardType: String,
+        val cardNo: String,
     ) {
         data class OrderItemRequest(
             val productId: Long,
@@ -20,6 +22,7 @@ class OrderV1Dto {
         val totalAmount: Long,
         val status: String,
         val items: List<OrderItemResponse>,
+        val paymentId: Long?,
         val createdAt: ZonedDateTime,
         val updatedAt: ZonedDateTime,
     ) {
@@ -35,7 +38,7 @@ class OrderV1Dto {
         )
 
         companion object {
-            fun from(info: OrderInfo) = OrderResponse(
+            fun from(info: OrderInfo, paymentId: Long? = null) = OrderResponse(
                 id = info.id,
                 userId = info.userId,
                 totalAmount = info.totalAmount,
@@ -52,6 +55,7 @@ class OrderV1Dto {
                         subTotal = item.subTotal,
                     )
                 },
+                paymentId = paymentId,
                 createdAt = info.createdAt,
                 updatedAt = info.updatedAt,
             )

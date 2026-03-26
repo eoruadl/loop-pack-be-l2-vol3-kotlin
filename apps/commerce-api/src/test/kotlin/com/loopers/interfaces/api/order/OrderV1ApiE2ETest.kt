@@ -1,8 +1,14 @@
 package com.loopers.interfaces.api.order
 
 import com.loopers.application.order.OrderFacade
+import com.loopers.application.payment.PgFailureCode
+import com.loopers.application.payment.PgPaymentPort
+import com.loopers.application.payment.PgPaymentRequest
+import com.loopers.application.payment.PgPaymentResponse
+import com.loopers.application.payment.PgPaymentStatusResponse
 import com.loopers.application.product.ProductFacade
 import com.loopers.domain.brand.BrandService
+import com.loopers.domain.payment.CardType
 import com.loopers.domain.user.BirthDate
 import com.loopers.domain.user.Email
 import com.loopers.domain.user.LoginId
@@ -20,7 +26,10 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.web.client.TestRestTemplate
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Primary
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
@@ -44,6 +53,26 @@ class OrderV1ApiE2ETest @Autowired constructor(
         private const val LDAP_HEADER = "X-Loopers-Ldap"
         private const val LDAP_VALUE = "loopers.admin"
         private const val TEST_PASSWORD = "Password123!"
+        private val DEFAULT_CARD_TYPE = CardType.SAMSUNG.name
+        private const val DEFAULT_CARD_NO = "1234567890123456"
+    }
+
+    @TestConfiguration
+    class FakePgConfig {
+        @Bean
+        @Primary
+        fun fakePgPaymentClient(): FakePgPaymentClient = FakePgPaymentClient()
+    }
+
+    class FakePgPaymentClient : PgPaymentPort {
+        override fun requestPayment(request: PgPaymentRequest): PgPaymentResponse =
+            PgPaymentResponse(pgTransactionId = "fake-pg-tx-${request.orderId}")
+
+        override fun getPayment(pgTxId: String, userId: Long): PgPaymentStatusResponse =
+            PgPaymentStatusResponse(pgTransactionId = pgTxId, status = "SUCCESS", failureCode = null)
+
+        override fun getPaymentByOrderId(orderId: Long, userId: Long): PgPaymentStatusResponse? =
+            PgPaymentStatusResponse(pgTransactionId = "fake-pg-tx-ORDER-$orderId", status = "SUCCESS", failureCode = null)
     }
 
     @AfterEach
@@ -104,6 +133,8 @@ class OrderV1ApiE2ETest @Autowired constructor(
 
             val request = OrderV1Dto.CreateOrderRequest(
                 items = listOf(OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId = product.id, quantity = 2L)),
+                cardType = DEFAULT_CARD_TYPE,
+                cardNo = DEFAULT_CARD_NO,
             )
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
@@ -119,6 +150,7 @@ class OrderV1ApiE2ETest @Autowired constructor(
                 { assertThat(response.body?.data?.totalAmount).isEqualTo(100_000L) },
                 { assertThat(response.body?.data?.items).hasSize(1) },
                 { assertThat(response.body?.data?.items?.first()?.quantity).isEqualTo(2L) },
+                { assertThat(response.body?.data?.paymentId).isNotNull() },
             )
         }
 
@@ -130,6 +162,8 @@ class OrderV1ApiE2ETest @Autowired constructor(
 
             val request = OrderV1Dto.CreateOrderRequest(
                 items = listOf(OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId = product.id, quantity = 1L)),
+                cardType = DEFAULT_CARD_TYPE,
+                cardNo = DEFAULT_CARD_NO,
             )
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
@@ -152,6 +186,8 @@ class OrderV1ApiE2ETest @Autowired constructor(
 
             val request = OrderV1Dto.CreateOrderRequest(
                 items = listOf(OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId = product.id, quantity = 5L)),
+                cardType = DEFAULT_CARD_TYPE,
+                cardNo = DEFAULT_CARD_NO,
             )
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
