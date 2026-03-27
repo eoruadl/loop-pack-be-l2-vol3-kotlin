@@ -57,12 +57,16 @@ class CouponV1ApiE2ETest @Autowired constructor(
         )
     )
 
-    private fun createTemplate(name: String = "테스트쿠폰") = couponFacade.createTemplate(
+    private fun createTemplate(
+        name: String = "테스트쿠폰",
+        issueLimit: Long? = null,
+    ) = couponFacade.createTemplate(
         name = name,
         type = "FIXED",
         value = 1000L,
         minOrderAmount = null,
         expiredAt = ZonedDateTime.now().plusDays(30),
+        issueLimit = issueLimit,
     )
 
     private fun authHeaders(loginId: String = "testuser") = HttpHeaders().apply {
@@ -126,6 +130,33 @@ class CouponV1ApiE2ETest @Autowired constructor(
         }
 
         @Test
+        @DisplayName("발급 제한 수량을 초과하면 409 CONFLICT를 반환한다")
+        fun issueCoupon_whenSoldOut_thenReturnsConflict() {
+            createUser("user1")
+            createUser("user2")
+            val template = createTemplate(issueLimit = 1L)
+
+            val responseType = object : ParameterizedTypeReference<ApiResponse<CouponV1Dto.UserCouponResponse>>() {}
+            val firstResponse = testRestTemplate.exchange(
+                "$COUPONS/${template.id}/issue",
+                HttpMethod.POST,
+                HttpEntity<Any>(authHeaders("user1")),
+                responseType,
+            )
+            val secondResponse = testRestTemplate.exchange(
+                "$COUPONS/${template.id}/issue",
+                HttpMethod.POST,
+                HttpEntity<Any>(authHeaders("user2")),
+                responseType,
+            )
+
+            assertAll(
+                { assertThat(firstResponse.statusCode).isEqualTo(HttpStatus.OK) },
+                { assertThat(secondResponse.statusCode).isEqualTo(HttpStatus.CONFLICT) },
+            )
+        }
+
+        @Test
         @DisplayName("인증 헤더 없이 요청하면 401을 반환한다")
         fun issueCoupon_whenNoAuth_thenReturns401() {
             val template = createTemplate()
@@ -142,6 +173,93 @@ class CouponV1ApiE2ETest @Autowired constructor(
         }
     }
 
+    @DisplayName("POST /api/v1/coupons/{couponId}/issue-requests")
+    @Nested
+    inner class RequestCouponIssue {
+
+        @Test
+        @DisplayName("인증된 사용자가 비동기 발급 요청을 하면 200과 요청 정보를 반환한다")
+        fun requestCouponIssue_whenValidAuth_thenReturnsRequestResponse() {
+            createUser()
+            val template = createTemplate()
+
+            val responseType = object : ParameterizedTypeReference<ApiResponse<CouponV1Dto.CouponIssueRequestResponse>>() {}
+            val response = testRestTemplate.exchange(
+                "$COUPONS/${template.id}/issue-requests",
+                HttpMethod.POST,
+                HttpEntity<Any>(authHeaders()),
+                responseType,
+            )
+
+            assertAll(
+                { assertThat(response.statusCode).isEqualTo(HttpStatus.OK) },
+                { assertThat(response.body?.data?.couponTemplateId).isEqualTo(template.id) },
+                { assertThat(response.body?.data?.status).isEqualTo("REQUESTED") },
+                { assertThat(response.body?.data?.requestId).isNotBlank() },
+            )
+        }
+    }
+
+    @DisplayName("GET /api/v1/coupons/issue-requests/{requestId}")
+    @Nested
+    inner class GetCouponIssueRequest {
+
+        @Test
+        @DisplayName("발급 요청 조회 시 200과 요청 상태를 반환한다")
+        fun getCouponIssueRequest_whenExists_thenReturnsRequestResponse() {
+            createUser()
+            val template = createTemplate()
+
+            val requestType = object : ParameterizedTypeReference<ApiResponse<CouponV1Dto.CouponIssueRequestResponse>>() {}
+            val created = testRestTemplate.exchange(
+                "$COUPONS/${template.id}/issue-requests",
+                HttpMethod.POST,
+                HttpEntity<Any>(authHeaders()),
+                requestType,
+            )
+
+            val requestId = created.body!!.data!!.requestId
+
+            val response = testRestTemplate.exchange(
+                "$COUPONS/issue-requests/$requestId",
+                HttpMethod.GET,
+                HttpEntity<Any>(authHeaders()),
+                requestType,
+            )
+
+            assertAll(
+                { assertThat(response.statusCode).isEqualTo(HttpStatus.OK) },
+                { assertThat(response.body?.data?.requestId).isEqualTo(requestId) },
+                { assertThat(response.body?.data?.status).isEqualTo("REQUESTED") },
+            )
+        }
+
+        @Test
+        @DisplayName("타인의 발급 요청을 조회하면 403을 반환한다")
+        fun getCouponIssueRequest_whenNotOwner_thenReturnsForbidden() {
+            createUser("owner")
+            createUser("other")
+            val template = createTemplate()
+
+            val requestType = object : ParameterizedTypeReference<ApiResponse<CouponV1Dto.CouponIssueRequestResponse>>() {}
+            val created = testRestTemplate.exchange(
+                "$COUPONS/${template.id}/issue-requests",
+                HttpMethod.POST,
+                HttpEntity<Any>(authHeaders("owner")),
+                requestType,
+            )
+
+            val response = testRestTemplate.exchange(
+                "$COUPONS/issue-requests/${created.body!!.data!!.requestId}",
+                HttpMethod.GET,
+                HttpEntity<Any>(authHeaders("other")),
+                requestType,
+            )
+
+            assertThat(response.statusCode).isEqualTo(HttpStatus.FORBIDDEN)
+        }
+    }
+
     @DisplayName("POST /api-admin/v1/coupons")
     @Nested
     inner class CreateTemplate {
@@ -155,6 +273,7 @@ class CouponV1ApiE2ETest @Autowired constructor(
                 value = 5000L,
                 minOrderAmount = 30000L,
                 expiredAt = ZonedDateTime.now().plusDays(30),
+                issueLimit = 100L,
             )
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<CouponAdminV1Dto.CouponTemplateResponse>>() {}
@@ -172,6 +291,8 @@ class CouponV1ApiE2ETest @Autowired constructor(
                 { assertThat(response.body?.data?.type).isEqualTo("FIXED") },
                 { assertThat(response.body?.data?.value).isEqualTo(5000L) },
                 { assertThat(response.body?.data?.minOrderAmount).isEqualTo(30000L) },
+                { assertThat(response.body?.data?.issueLimit).isEqualTo(100L) },
+                { assertThat(response.body?.data?.issuedCount).isEqualTo(0L) },
             )
         }
 

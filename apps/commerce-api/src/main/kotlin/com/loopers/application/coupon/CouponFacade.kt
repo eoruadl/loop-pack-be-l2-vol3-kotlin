@@ -19,6 +19,7 @@ class CouponFacade(
     @Transactional
     fun issueCoupon(loginId: String, couponTemplateId: Long): UserCouponInfo {
         val user = userService.getUserByLoginId(loginId)
+        couponTemplateService.reserveIssue(couponTemplateId)
         return userCouponService.issueCoupon(user.id, couponTemplateId)
             .let { UserCouponInfo.from(it) }
     }
@@ -38,6 +39,7 @@ class CouponFacade(
         value: Long,
         minOrderAmount: Long?,
         expiredAt: ZonedDateTime,
+        issueLimit: Long? = null,
     ): CouponTemplateInfo =
         couponTemplateService.createTemplate(
             name = name,
@@ -45,6 +47,7 @@ class CouponFacade(
             value = value,
             minOrderAmount = minOrderAmount,
             expiredAt = expiredAt,
+            issueLimit = issueLimit,
         ).let { CouponTemplateInfo.from(it) }
 
     @Transactional
@@ -55,6 +58,7 @@ class CouponFacade(
         value: Long,
         minOrderAmount: Long?,
         expiredAt: ZonedDateTime,
+        issueLimit: Long? = null,
     ): CouponTemplateInfo =
         couponTemplateService.updateTemplate(
             id = id,
@@ -63,6 +67,7 @@ class CouponFacade(
             value = value,
             minOrderAmount = minOrderAmount,
             expiredAt = expiredAt,
+            issueLimit = issueLimit,
         ).let { CouponTemplateInfo.from(it) }
 
     @Transactional

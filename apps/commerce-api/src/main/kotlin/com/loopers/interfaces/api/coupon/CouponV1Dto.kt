@@ -22,4 +22,26 @@ class CouponV1Dto {
             )
         }
     }
+
+    data class CouponIssueRequestResponse(
+        val requestId: String,
+        val couponTemplateId: Long,
+        val userId: Long,
+        val status: String,
+        val failureReason: String?,
+        val createdAt: ZonedDateTime,
+        val updatedAt: ZonedDateTime,
+    ) {
+        companion object {
+            fun from(info: com.loopers.application.couponrequest.CouponIssueRequestInfo) = CouponIssueRequestResponse(
+                requestId = info.requestId,
+                couponTemplateId = info.couponTemplateId,
+                userId = info.userId,
+                status = info.status,
+                failureReason = info.failureReason,
+                createdAt = info.createdAt,
+                updatedAt = info.updatedAt,
+            )
+        }
+    }
 }

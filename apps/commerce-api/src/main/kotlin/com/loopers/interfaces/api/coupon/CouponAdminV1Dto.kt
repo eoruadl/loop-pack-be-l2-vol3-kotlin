@@ -12,6 +12,7 @@ class CouponAdminV1Dto {
         val value: Long,
         val minOrderAmount: Long?,
         val expiredAt: ZonedDateTime,
+        val issueLimit: Long? = null,
     )
 
     data class UpdateCouponTemplateRequest(
@@ -20,6 +21,7 @@ class CouponAdminV1Dto {
         val value: Long,
         val minOrderAmount: Long?,
         val expiredAt: ZonedDateTime,
+        val issueLimit: Long? = null,
     )
 
     data class CouponTemplateResponse(
@@ -29,6 +31,8 @@ class CouponAdminV1Dto {
         val value: Long,
         val minOrderAmount: Long?,
         val expiredAt: ZonedDateTime,
+        val issueLimit: Long?,
+        val issuedCount: Long,
         val createdAt: ZonedDateTime,
         val updatedAt: ZonedDateTime,
     ) {
@@ -40,6 +44,8 @@ class CouponAdminV1Dto {
                 value = info.value,
                 minOrderAmount = info.minOrderAmount,
                 expiredAt = info.expiredAt,
+                issueLimit = info.issueLimit,
+                issuedCount = info.issuedCount,
                 createdAt = info.createdAt,
                 updatedAt = info.updatedAt,
             )

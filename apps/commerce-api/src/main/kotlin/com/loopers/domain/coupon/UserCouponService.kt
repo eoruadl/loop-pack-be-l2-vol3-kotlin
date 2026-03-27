@@ -14,6 +14,9 @@ class UserCouponService(
 ) {
     @Transactional
     fun issueCoupon(userId: Long, couponTemplateId: Long): UserCouponModel {
+        if (userCouponRepository.existsByUserIdAndCouponTemplateId(userId, couponTemplateId)) {
+            throw CoreException(ErrorType.CONFLICT, "이미 발급된 쿠폰입니다.")
+        }
         try {
             return userCouponRepository.save(
                 UserCouponModel(
@@ -24,6 +27,25 @@ class UserCouponService(
             )
         } catch (e: DataIntegrityViolationException) {
             throw CoreException(ErrorType.CONFLICT, "이미 발급된 쿠폰입니다.")
+        }
+    }
+
+    @Transactional
+    fun tryIssueCoupon(userId: Long, couponTemplateId: Long): Boolean {
+        if (userCouponRepository.existsByUserIdAndCouponTemplateId(userId, couponTemplateId)) {
+            return false
+        }
+        return try {
+            userCouponRepository.save(
+                UserCouponModel(
+                    userId = userId,
+                    couponTemplateId = couponTemplateId,
+                    status = UserCouponStatus.AVAILABLE,
+                )
+            )
+            true
+        } catch (_: DataIntegrityViolationException) {
+            false
         }
     }
 

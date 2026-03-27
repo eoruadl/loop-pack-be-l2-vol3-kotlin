@@ -8,4 +8,6 @@ interface CouponTemplateRepository {
     fun findById(id: Long): CouponTemplateModel?
     fun findAll(pageable: Pageable): Page<CouponTemplateModel>
     fun deleteById(id: Long)
+    fun incrementIssuedCountIfAvailable(id: Long): Boolean
+    fun decrementIssuedCount(id: Long): Boolean
 }
