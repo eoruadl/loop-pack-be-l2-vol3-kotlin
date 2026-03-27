@@ -39,3 +39,10 @@ out/
 
 ### Kotlin ###
 .kotlin
+
+.claude
+.omx
+.docs
+
+*.sql
+*.py
