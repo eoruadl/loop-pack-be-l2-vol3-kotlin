@@ -19,6 +19,7 @@ class CouponIssueRequestConsumer(
     @KafkaListener(
         topics = ["\${app.kafka.topics.coupon-issue-requests:coupon-issue-requests}"],
         groupId = "\${spring.kafka.consumer.group-id:loopers-default-consumer}",
+        concurrency = "\${app.kafka.consumers.coupon-issue-requests.concurrency:8}",
     )
     fun consume(
         record: ConsumerRecord<String, ByteArray>,

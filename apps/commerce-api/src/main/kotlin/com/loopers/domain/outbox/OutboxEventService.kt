@@ -13,6 +13,7 @@ class OutboxEventService(
             OutboxEventModel(
                 eventId = command.eventId,
                 topic = command.topic,
+                partition = command.partition,
                 eventKey = command.eventKey,
                 eventType = command.eventType,
                 payload = command.payload,
@@ -40,6 +41,7 @@ class OutboxEventService(
     data class SaveOutboxEventCommand(
         val eventId: String,
         val topic: String,
+        val partition: Int? = null,
         val eventKey: String,
         val eventType: String,
         val payload: String,

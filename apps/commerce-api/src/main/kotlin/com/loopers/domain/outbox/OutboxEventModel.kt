@@ -14,6 +14,7 @@ import java.time.ZonedDateTime
 class OutboxEventModel(
     eventId: String,
     topic: String,
+    partition: Int? = null,
     eventKey: String,
     eventType: String,
     payload: String,
@@ -25,6 +26,10 @@ class OutboxEventModel(
 
     @Column(name = "topic_name", nullable = false)
     var topic: String = topic
+        protected set
+
+    @Column(name = "partition_no")
+    var partition: Int? = partition
         protected set
 
     @Column(name = "event_key", nullable = false)

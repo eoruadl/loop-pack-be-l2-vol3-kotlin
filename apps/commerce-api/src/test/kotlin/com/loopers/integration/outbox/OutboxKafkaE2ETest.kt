@@ -5,12 +5,16 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.loopers.application.catalog.CatalogEventOutboxCommand
 import com.loopers.application.catalog.CatalogEventOutboxService
+import com.loopers.application.couponrequest.CouponIssueRequestInfo
+import com.loopers.application.couponrequest.CouponIssueRequestOutboxService
 import com.loopers.infrastructure.outbox.OutboxEventPublisher
 import com.loopers.messaging.catalog.CatalogEventMessage
 import com.loopers.messaging.catalog.CatalogEventType
+import com.loopers.messaging.coupon.CouponIssueRequestMessage
 import com.loopers.testcontainers.KafkaTestContainersConfig
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
+import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.assertj.core.api.Assertions.assertThat
@@ -26,6 +30,7 @@ import java.util.UUID
 @Import(KafkaTestContainersConfig::class)
 class OutboxKafkaE2ETest @Autowired constructor(
     private val catalogEventOutboxService: CatalogEventOutboxService,
+    private val couponIssueRequestOutboxService: CouponIssueRequestOutboxService,
     private val outboxEventPublisher: OutboxEventPublisher,
 ) {
     private val objectMapper: ObjectMapper = jacksonObjectMapper().registerModule(JavaTimeModule())
@@ -53,6 +58,37 @@ class OutboxKafkaE2ETest @Autowired constructor(
             assertThat(event.eventType).isEqualTo(CatalogEventType.PRODUCT_LIKED)
             assertThat(event.productId).isEqualTo(101L)
             assertThat(event.actorLoginId).isEqualTo("testuser")
+        }
+    }
+
+    @Test
+    fun `쿠폰 발급 요청은 쿠폰 전용 파티션으로 Kafka에 발행된다`() {
+        KafkaConsumer<String, ByteArray>(consumerProps("coupon-issue-requests")).use { consumer ->
+            couponIssueRequestOutboxService.enqueue(
+                CouponIssueRequestInfo(
+                    requestId = "req-partition-3",
+                    couponTemplateId = 3L,
+                    userId = 22L,
+                    status = "REQUESTED",
+                    failureReason = null,
+                    createdAt = java.time.ZonedDateTime.now(),
+                    updatedAt = java.time.ZonedDateTime.now(),
+                )
+            )
+
+            val targetPartition = TopicPartition("coupon-issue-requests", 2)
+            consumer.assign(listOf(targetPartition))
+            consumer.seekToBeginning(listOf(targetPartition))
+
+            outboxEventPublisher.publishPendingEvents()
+
+            val record = waitForRecord(consumer)
+            val event = objectMapper.readValue(record.value(), CouponIssueRequestMessage::class.java)
+
+            assertThat(record.key()).isEqualTo("3")
+            assertThat(record.partition()).isEqualTo(2)
+            assertThat(event.couponTemplateId).isEqualTo(3L)
+            assertThat(event.userId).isEqualTo(22L)
         }
     }
 

@@ -36,6 +36,10 @@ app:
       catalog-events: catalog-events
       order-events: order-events
       coupon-issue-requests: coupon-issue-requests
+      coupon-issue-requests-replication-factor: 1
+    consumers:
+      coupon-issue-requests:
+        concurrency: 8
 
 resilience4j:
   circuitbreaker:

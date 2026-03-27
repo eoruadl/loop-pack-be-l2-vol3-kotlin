@@ -18,7 +18,11 @@ class OutboxEventPublisher(
         outboxEventService.getPublishableBatch().forEach { event ->
             runCatching {
                 val payload = objectMapper.readTree(event.payload)
-                kafkaTemplate.send(event.topic, event.eventKey, payload).get()
+                if (event.partition != null) {
+                    kafkaTemplate.send(event.topic, event.partition!!, event.eventKey, payload).get()
+                } else {
+                    kafkaTemplate.send(event.topic, event.eventKey, payload).get()
+                }
                 outboxEventService.markPublished(event)
             }.onFailure { throwable ->
                 outboxEventService.markFailed(event, throwable.message ?: "Kafka publish failed")
