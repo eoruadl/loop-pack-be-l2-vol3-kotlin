@@ -1,5 +1,7 @@
 package com.loopers.application.like
 
+import com.loopers.application.catalog.CatalogEventOutboxService
+import com.loopers.messaging.catalog.CatalogEventType
 import com.loopers.domain.like.LikeService
 import com.loopers.domain.like.LikeModel
 import com.loopers.domain.user.UserService
@@ -37,6 +39,9 @@ class LikeFacadeTest {
     @Mock
     private lateinit var applicationEventPublisher: ApplicationEventPublisher
 
+    @Mock
+    private lateinit var catalogEventOutboxService: CatalogEventOutboxService
+
     @InjectMocks
     private lateinit var likeFacade: LikeFacade
 
@@ -72,6 +77,13 @@ class LikeFacadeTest {
                     productId == 1L && type == LikeCountChangedEvent.Type.INCREASE
                 }
             )
+            verify(catalogEventOutboxService).enqueue(
+                argThat {
+                    productId == 1L &&
+                        actorLoginId == "testuser" &&
+                        eventType == CatalogEventType.PRODUCT_LIKED
+                }
+            )
         }
 
         @Test
@@ -84,6 +96,7 @@ class LikeFacadeTest {
             likeFacade.like("testuser", 1L)
 
             verify(applicationEventPublisher, never()).publishEvent(any<LikeCountChangedEvent>())
+            verify(catalogEventOutboxService, never()).enqueue(any())
         }
     }
 
@@ -104,6 +117,13 @@ class LikeFacadeTest {
                     productId == 1L && type == LikeCountChangedEvent.Type.DECREASE
                 }
             )
+            verify(catalogEventOutboxService).enqueue(
+                argThat {
+                    productId == 1L &&
+                        actorLoginId == "testuser" &&
+                        eventType == CatalogEventType.PRODUCT_UNLIKED
+                }
+            )
         }
 
         @Test
@@ -115,6 +135,7 @@ class LikeFacadeTest {
             likeFacade.unlike("testuser", 1L)
 
             verify(applicationEventPublisher, never()).publishEvent(any<LikeCountChangedEvent>())
+            verify(catalogEventOutboxService, never()).enqueue(any())
         }
     }
 

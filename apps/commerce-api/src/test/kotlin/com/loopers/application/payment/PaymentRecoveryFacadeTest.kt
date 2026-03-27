@@ -6,6 +6,7 @@ import com.loopers.domain.order.OrderService
 import com.loopers.domain.order.OrderStatus
 import com.loopers.domain.order.OriginalAmount
 import com.loopers.domain.order.TotalAmount
+import com.loopers.application.order.OrderEventOutboxService
 import com.loopers.domain.payment.CardNo
 import com.loopers.domain.payment.CardType
 import com.loopers.domain.payment.PaymentModel
@@ -13,6 +14,7 @@ import com.loopers.domain.payment.PaymentRepository
 import com.loopers.domain.payment.PaymentService
 import com.loopers.domain.payment.PaymentStatus
 import com.loopers.domain.payment.PgTransactionId
+import com.loopers.messaging.order.OrderEventType
 import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
@@ -32,6 +34,7 @@ class PaymentRecoveryFacadeTest {
     private val orderService: OrderService = mockk()
     private val pgPaymentPort: PgPaymentPort = mockk()
     private val applicationEventPublisher: ApplicationEventPublisher = mockk(relaxed = true)
+    private val orderEventOutboxService: OrderEventOutboxService = mockk(relaxed = true)
 
     private lateinit var paymentRecoveryFacade: PaymentRecoveryFacade
 
@@ -42,6 +45,7 @@ class PaymentRecoveryFacadeTest {
             orderService = orderService,
             pgPaymentPort = pgPaymentPort,
             applicationEventPublisher = applicationEventPublisher,
+            orderEventOutboxService = orderEventOutboxService,
         )
     }
 
@@ -107,6 +111,15 @@ class PaymentRecoveryFacadeTest {
 
             verify { paymentRepository.save(match { it.status == PaymentStatus.COMPLETED }) }
             verify(exactly = 1) { orderService.payOrder(10L) }
+            verify {
+                orderEventOutboxService.enqueue(
+                    match {
+                        it.eventType == OrderEventType.PAYMENT_RECOVERED &&
+                            it.orderId == 10L &&
+                            it.paymentId == 0L
+                    }
+                )
+            }
         }
 
         @Test

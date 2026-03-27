@@ -1,6 +1,8 @@
 package com.loopers.application.payment
 
 import com.loopers.application.audit.OrderPaymentAuditEvent
+import com.loopers.application.order.OrderEventOutboxCommand
+import com.loopers.application.order.OrderEventOutboxService
 import com.loopers.domain.audit.OrderPaymentAuditEventType
 import com.loopers.domain.order.OrderService
 import com.loopers.domain.order.OrderStatus
@@ -9,6 +11,7 @@ import com.loopers.domain.payment.CardNo
 import com.loopers.domain.payment.PaymentService
 import com.loopers.domain.payment.PaymentStatus
 import com.loopers.domain.user.UserService
+import com.loopers.messaging.order.OrderEventType
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import org.springframework.beans.factory.annotation.Value
@@ -25,6 +28,7 @@ class PaymentFacade(
     @Value("\${payment.callback-url:http://localhost:8080/api/v1/payments/callback}")
     private val callbackUrl: String,
     private val applicationEventPublisher: ApplicationEventPublisher,
+    private val orderEventOutboxService: OrderEventOutboxService,
 ) {
     fun requestPayment(loginId: String, orderId: Long, cardType: CardType, cardNo: String): PaymentInfo {
         // 1. 주문 검증
@@ -127,6 +131,14 @@ class PaymentFacade(
                         maskedCardNo = completedPayment.cardNo.masked(),
                         pgTransactionId = completedPayment.pgTxId?.value,
                         reason = reason,
+                    )
+                )
+                orderEventOutboxService.enqueue(
+                    OrderEventOutboxCommand(
+                        eventType = OrderEventType.PAYMENT_SUCCEEDED,
+                        orderId = completedPayment.orderId,
+                        paymentId = completedPayment.id,
+                        userId = completedPayment.userId,
                     )
                 )
             }

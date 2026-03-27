@@ -1,10 +1,13 @@
 package com.loopers.application.payment
 
 import com.loopers.application.audit.OrderPaymentAuditEvent
+import com.loopers.application.order.OrderEventOutboxCommand
+import com.loopers.application.order.OrderEventOutboxService
 import com.loopers.domain.audit.OrderPaymentAuditEventType
 import com.loopers.domain.order.OrderService
 import com.loopers.domain.payment.PaymentStatus
 import com.loopers.domain.payment.PaymentService
+import com.loopers.messaging.order.OrderEventType
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import org.slf4j.LoggerFactory
@@ -19,6 +22,7 @@ class PaymentRecoveryFacade(
     private val orderService: OrderService,
     private val pgPaymentPort: PgPaymentPort,
     private val applicationEventPublisher: ApplicationEventPublisher,
+    private val orderEventOutboxService: OrderEventOutboxService,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -53,6 +57,14 @@ class PaymentRecoveryFacade(
                         maskedCardNo = completedPayment.cardNo.masked(),
                         pgTransactionId = completedPayment.pgTxId?.value ?: pgStatusResponse.pgTransactionId,
                         reason = "결제 복구 성공",
+                    )
+                )
+                orderEventOutboxService.enqueue(
+                    OrderEventOutboxCommand(
+                        eventType = OrderEventType.PAYMENT_RECOVERED,
+                        orderId = completedPayment.orderId,
+                        paymentId = completedPayment.id,
+                        userId = completedPayment.userId,
                     )
                 )
             }

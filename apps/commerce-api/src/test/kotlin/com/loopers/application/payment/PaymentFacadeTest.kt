@@ -6,6 +6,7 @@ import com.loopers.domain.order.OrderService
 import com.loopers.domain.order.OrderStatus
 import com.loopers.domain.order.OriginalAmount
 import com.loopers.domain.order.TotalAmount
+import com.loopers.application.order.OrderEventOutboxService
 import com.loopers.domain.payment.CardNo
 import com.loopers.domain.payment.CardType
 import com.loopers.domain.payment.PaymentModel
@@ -19,6 +20,7 @@ import com.loopers.domain.user.LoginId
 import com.loopers.domain.user.Name
 import com.loopers.domain.user.UserModel
 import com.loopers.domain.user.UserService
+import com.loopers.messaging.order.OrderEventType
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import io.mockk.every
@@ -43,6 +45,7 @@ class PaymentFacadeTest {
     private val userService: UserService = mockk()
     private val pgPaymentPort: PgPaymentPort = mockk()
     private val applicationEventPublisher: ApplicationEventPublisher = mockk(relaxed = true)
+    private val orderEventOutboxService: OrderEventOutboxService = mockk(relaxed = true)
 
     private lateinit var paymentFacade: PaymentFacade
 
@@ -55,6 +58,7 @@ class PaymentFacadeTest {
             pgPaymentPort = pgPaymentPort,
             callbackUrl = "http://localhost:8080/api/v1/payments/callback",
             applicationEventPublisher = applicationEventPublisher,
+            orderEventOutboxService = orderEventOutboxService,
         )
         every { paymentRepository.existsActiveByOrderId(any()) } returns false
     }
@@ -152,6 +156,15 @@ class PaymentFacadeTest {
 
             verify { paymentRepository.save(match { it.status == PaymentStatus.COMPLETED }) }
             verify(exactly = 1) { orderService.payOrder(1L) }
+            verify {
+                orderEventOutboxService.enqueue(
+                    match {
+                        it.eventType == OrderEventType.PAYMENT_SUCCEEDED &&
+                            it.orderId == 1L &&
+                            it.paymentId == 0L
+                    }
+                )
+            }
         }
     }
 
