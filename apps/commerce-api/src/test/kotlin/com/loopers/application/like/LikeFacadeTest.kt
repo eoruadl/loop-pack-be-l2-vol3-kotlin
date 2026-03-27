@@ -2,7 +2,6 @@ package com.loopers.application.like
 
 import com.loopers.domain.like.LikeService
 import com.loopers.domain.like.LikeModel
-import com.loopers.domain.product.ProductService
 import com.loopers.domain.user.UserService
 import com.loopers.domain.user.BirthDate
 import com.loopers.domain.user.Email
@@ -19,8 +18,12 @@ import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argThat
+import org.mockito.kotlin.never
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.data.domain.PageRequest
+import org.springframework.context.ApplicationEventPublisher
 
 @ExtendWith(MockitoExtension::class)
 class LikeFacadeTest {
@@ -32,7 +35,7 @@ class LikeFacadeTest {
     private lateinit var userService: UserService
 
     @Mock
-    private lateinit var productService: ProductService
+    private lateinit var applicationEventPublisher: ApplicationEventPublisher
 
     @InjectMocks
     private lateinit var likeFacade: LikeFacade
@@ -64,6 +67,23 @@ class LikeFacadeTest {
             assertThat(result).isInstanceOf(LikeInfo::class.java)
             assertThat(result.userId).isEqualTo(likeModel.userId)
             assertThat(result.productId).isEqualTo(likeModel.productId)
+            verify(applicationEventPublisher).publishEvent(
+                argThat<LikeCountChangedEvent> {
+                    productId == 1L && type == LikeCountChangedEvent.Type.INCREASE
+                }
+            )
+        }
+
+        @Test
+        fun `이미 좋아요가 존재하면 집계 이벤트를 발행하지 않는다`() {
+            val userModel = createTestUserModel()
+            val likeModel = createTestLikeModel()
+            whenever(userService.getUserByLoginId(any())).thenReturn(userModel)
+            whenever(likeService.like(any(), any())).thenReturn(Pair(false, likeModel))
+
+            likeFacade.like("testuser", 1L)
+
+            verify(applicationEventPublisher, never()).publishEvent(any<LikeCountChangedEvent>())
         }
     }
 
@@ -74,11 +94,27 @@ class LikeFacadeTest {
         fun `unlike() 호출 시 정상적으로 완료된다`() {
             val userModel = createTestUserModel()
             whenever(userService.getUserByLoginId(any())).thenReturn(userModel)
-            whenever(likeService.unlike(any(), any())).thenReturn(false)
+            whenever(likeService.unlike(any(), any())).thenReturn(true)
 
             val result = likeFacade.unlike("testuser", 1L)
 
             assertThat(result).isEqualTo(Unit)
+            verify(applicationEventPublisher).publishEvent(
+                argThat<LikeCountChangedEvent> {
+                    productId == 1L && type == LikeCountChangedEvent.Type.DECREASE
+                }
+            )
+        }
+
+        @Test
+        fun `unlike 대상이 없으면 집계 이벤트를 발행하지 않는다`() {
+            val userModel = createTestUserModel()
+            whenever(userService.getUserByLoginId(any())).thenReturn(userModel)
+            whenever(likeService.unlike(any(), any())).thenReturn(false)
+
+            likeFacade.unlike("testuser", 1L)
+
+            verify(applicationEventPublisher, never()).publishEvent(any<LikeCountChangedEvent>())
         }
     }
 

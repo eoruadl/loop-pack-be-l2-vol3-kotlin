@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.context.ApplicationEventPublisher
 import java.time.ZonedDateTime
 
 @ExtendWith(MockKExtension::class)
@@ -30,6 +31,7 @@ class PaymentRecoveryFacadeTest {
     private val paymentService: PaymentService = PaymentService(paymentRepository)
     private val orderService: OrderService = mockk()
     private val pgPaymentPort: PgPaymentPort = mockk()
+    private val applicationEventPublisher: ApplicationEventPublisher = mockk(relaxed = true)
 
     private lateinit var paymentRecoveryFacade: PaymentRecoveryFacade
 
@@ -39,6 +41,7 @@ class PaymentRecoveryFacadeTest {
             paymentService = paymentService,
             orderService = orderService,
             pgPaymentPort = pgPaymentPort,
+            applicationEventPublisher = applicationEventPublisher,
         )
     }
 
@@ -109,6 +112,7 @@ class PaymentRecoveryFacadeTest {
         @Test
         fun `pgTxId 있고 PG 실패 결과 시 FAILED 전이`() {
             val payment = createPaymentModel(pgTxId = "pg-tx-abc")
+            val order = createOrderModel()
 
             every { paymentRepository.findById(0L) } returns payment
             every { pgPaymentPort.getPayment("pg-tx-abc", 1L) } returns PgPaymentStatusResponse(
@@ -117,6 +121,7 @@ class PaymentRecoveryFacadeTest {
                 failureCode = PgFailureCode.UNKNOWN,
             )
             every { paymentRepository.save(any()) } answers { firstArg() }
+            every { orderService.getOrderById(10L) } returns order
 
             paymentRecoveryFacade.recoverPayment(0L)
 
@@ -146,10 +151,12 @@ class PaymentRecoveryFacadeTest {
         @Test
         fun `pgTxId 없고 PG 주문 조회 결과 없을 때 FAILED 전이`() {
             val payment = createPaymentModel(pgTxId = null)
+            val order = createOrderModel()
 
             every { paymentRepository.findById(0L) } returns payment
             every { pgPaymentPort.getPaymentByOrderId(10L, 1L) } returns null
             every { paymentRepository.save(any()) } answers { firstArg() }
+            every { orderService.getOrderById(10L) } returns order
 
             paymentRecoveryFacade.recoverPayment(0L)
 

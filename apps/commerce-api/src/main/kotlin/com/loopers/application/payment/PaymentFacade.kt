@@ -1,14 +1,18 @@
 package com.loopers.application.payment
 
+import com.loopers.application.audit.OrderPaymentAuditEvent
+import com.loopers.domain.audit.OrderPaymentAuditEventType
 import com.loopers.domain.order.OrderService
 import com.loopers.domain.order.OrderStatus
 import com.loopers.domain.payment.CardType
+import com.loopers.domain.payment.CardNo
 import com.loopers.domain.payment.PaymentService
 import com.loopers.domain.payment.PaymentStatus
 import com.loopers.domain.user.UserService
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
@@ -20,6 +24,7 @@ class PaymentFacade(
     private val pgPaymentPort: PgPaymentPort,
     @Value("\${payment.callback-url:http://localhost:8080/api/v1/payments/callback}")
     private val callbackUrl: String,
+    private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
     fun requestPayment(loginId: String, orderId: Long, cardType: CardType, cardNo: String): PaymentInfo {
         // 1. 주문 검증
@@ -52,11 +57,50 @@ class PaymentFacade(
                     callbackUrl = callbackUrl,
                 )
             )
-            paymentService.setPgTransactionId(payment.id, pgResponse.pgTransactionId)
+            val updatedPayment = paymentService.setPgTransactionId(payment.id, pgResponse.pgTransactionId)
+            applicationEventPublisher.publishEvent(
+                OrderPaymentAuditEvent(
+                    eventType = OrderPaymentAuditEventType.PAYMENT_REQUESTED,
+                    orderId = order.id,
+                    paymentId = updatedPayment.id,
+                    userId = user.id,
+                    orderStatus = order.status.name,
+                    paymentStatus = updatedPayment.status.name,
+                    cardType = updatedPayment.cardType.name,
+                    maskedCardNo = updatedPayment.cardNo.masked(),
+                    pgTransactionId = updatedPayment.pgTxId?.value,
+                )
+            )
         } catch (e: PgPaymentFailException) {
-            paymentService.failPayment(payment.id)
+            val failedPayment = paymentService.failPayment(payment.id)
+            applicationEventPublisher.publishEvent(
+                OrderPaymentAuditEvent(
+                    eventType = OrderPaymentAuditEventType.PAYMENT_REQUEST_FAILED,
+                    orderId = order.id,
+                    paymentId = failedPayment.id,
+                    userId = user.id,
+                    orderStatus = order.status.name,
+                    paymentStatus = failedPayment.status.name,
+                    cardType = failedPayment.cardType.name,
+                    maskedCardNo = failedPayment.cardNo.masked(),
+                    reason = e.message ?: "PG 결제 요청 실패",
+                )
+            )
             throw CoreException(ErrorType.BAD_REQUEST, "PG 결제 요청에 실패했습니다.")
         } catch (e: PgPaymentTimeoutException) {
+            applicationEventPublisher.publishEvent(
+                OrderPaymentAuditEvent(
+                    eventType = OrderPaymentAuditEventType.PAYMENT_REQUEST_FAILED,
+                    orderId = order.id,
+                    paymentId = payment.id,
+                    userId = user.id,
+                    orderStatus = order.status.name,
+                    paymentStatus = PaymentStatus.PENDING.name,
+                    cardType = cardType.name,
+                    maskedCardNo = CardNo(cardNo).masked(),
+                    reason = e.message ?: "PG 결제 요청 타임아웃",
+                )
+            )
             throw CoreException(ErrorType.INTERNAL_ERROR, "PG 결제 요청이 타임아웃되었습니다.")
         }
 
@@ -69,14 +113,58 @@ class PaymentFacade(
         if (payment.status != PaymentStatus.PENDING) return
         when {
             pgStatus == "SUCCESS" -> {
-                paymentService.completePayment(payment.id)
-                orderService.payOrder(payment.orderId)
+                val completedPayment = paymentService.completePayment(payment.id)
+                val paidOrder = orderService.payOrder(payment.orderId)
+                applicationEventPublisher.publishEvent(
+                    OrderPaymentAuditEvent(
+                        eventType = OrderPaymentAuditEventType.PAYMENT_SUCCEEDED,
+                        orderId = completedPayment.orderId,
+                        paymentId = completedPayment.id,
+                        userId = completedPayment.userId,
+                        orderStatus = paidOrder.status.name,
+                        paymentStatus = completedPayment.status.name,
+                        cardType = completedPayment.cardType.name,
+                        maskedCardNo = completedPayment.cardNo.masked(),
+                        pgTransactionId = completedPayment.pgTxId?.value,
+                        reason = reason,
+                    )
+                )
             }
             else -> when (parseFailureCode(reason)) {
-                PgFailureCode.LIMIT_EXCEEDED -> paymentService.failPayment(payment.id, PaymentStatus.LIMIT_EXCEEDED)
-                PgFailureCode.INVALID_CARD -> paymentService.failPayment(payment.id, PaymentStatus.INVALID_CARD)
-                PgFailureCode.UNKNOWN -> paymentService.failPayment(payment.id)
+                PgFailureCode.LIMIT_EXCEEDED -> publishPaymentFailedAudit(
+                    paymentService.failPayment(payment.id, PaymentStatus.LIMIT_EXCEEDED),
+                    reason,
+                )
+                PgFailureCode.INVALID_CARD -> publishPaymentFailedAudit(
+                    paymentService.failPayment(payment.id, PaymentStatus.INVALID_CARD),
+                    reason,
+                )
+                PgFailureCode.UNKNOWN -> publishPaymentFailedAudit(
+                    paymentService.failPayment(payment.id),
+                    reason,
+                )
             }
         }
+    }
+
+    private fun publishPaymentFailedAudit(
+        payment: com.loopers.domain.payment.PaymentModel,
+        reason: String?,
+    ) {
+        val order = orderService.getOrderById(payment.orderId)
+        applicationEventPublisher.publishEvent(
+            OrderPaymentAuditEvent(
+                eventType = OrderPaymentAuditEventType.PAYMENT_FAILED,
+                orderId = payment.orderId,
+                paymentId = payment.id,
+                userId = payment.userId,
+                orderStatus = order.status.name,
+                paymentStatus = payment.status.name,
+                cardType = payment.cardType.name,
+                maskedCardNo = payment.cardNo.masked(),
+                pgTransactionId = payment.pgTxId?.value,
+                reason = reason,
+            )
+        )
     }
 }

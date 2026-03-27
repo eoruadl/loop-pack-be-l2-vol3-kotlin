@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.context.ApplicationEventPublisher
 import java.time.ZonedDateTime
 import kotlin.test.assertEquals
 
@@ -41,6 +42,7 @@ class PaymentFacadeTest {
     private val orderService: OrderService = mockk()
     private val userService: UserService = mockk()
     private val pgPaymentPort: PgPaymentPort = mockk()
+    private val applicationEventPublisher: ApplicationEventPublisher = mockk(relaxed = true)
 
     private lateinit var paymentFacade: PaymentFacade
 
@@ -52,6 +54,7 @@ class PaymentFacadeTest {
             userService = userService,
             pgPaymentPort = pgPaymentPort,
             callbackUrl = "http://localhost:8080/api/v1/payments/callback",
+            applicationEventPublisher = applicationEventPublisher,
         )
         every { paymentRepository.existsActiveByOrderId(any()) } returns false
     }

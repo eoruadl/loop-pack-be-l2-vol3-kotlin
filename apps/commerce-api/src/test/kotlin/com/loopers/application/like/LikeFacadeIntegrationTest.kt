@@ -20,16 +20,26 @@ import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.data.domain.PageRequest
+import org.springframework.transaction.support.TransactionSynchronizationManager
 
 @SpringBootTest
 class LikeFacadeIntegrationTest @Autowired constructor(
     private val likeFacade: LikeFacade,
     private val brandService: BrandService,
     private val productFacade: ProductFacade,
+    private val productService: com.loopers.domain.product.ProductService,
     private val userJpaRepository: UserJpaRepository,
     private val passwordEncryptor: PasswordEncryptor,
     private val databaseCleanUp: DatabaseCleanUp,
 ) {
+    private fun waitUntil(condition: () -> Boolean) {
+        repeat(50) {
+            if (condition()) return
+            Thread.sleep(100)
+        }
+        error("조건이 만족되지 않았습니다.")
+    }
+
 
     @AfterEach
     fun tearDown() {
@@ -83,6 +93,9 @@ class LikeFacadeIntegrationTest @Autowired constructor(
             assertThat(result.userId).isEqualTo(user.id)
             assertThat(result.productId).isEqualTo(product.id)
             assertThat(result.id).isGreaterThan(0)
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse()
+            waitUntil { productService.getProductById(product.id).likeCount.value == 1L }
+            assertThat(productService.getProductById(product.id).likeCount.value).isEqualTo(1L)
         }
     }
 
@@ -100,6 +113,8 @@ class LikeFacadeIntegrationTest @Autowired constructor(
 
             val likedProducts = likeFacade.getLikedProducts("testuser", userJpaRepository.findByLoginId(LoginId("testuser"))!!.id, PageRequest.of(0, 10))
             assertThat(likedProducts).isEmpty()
+            waitUntil { productService.getProductById(product.id).likeCount.value == 0L }
+            assertThat(productService.getProductById(product.id).likeCount.value).isEqualTo(0L)
         }
     }
 

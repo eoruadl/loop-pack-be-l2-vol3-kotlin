@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 
 @Service
@@ -102,11 +103,11 @@ class ProductService(
         return products.map { it.id }
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun incrementLikeCount(productId: Long) =
         productRepository.incrementLikeCount(productId)
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun decrementLikeCount(productId: Long) =
         productRepository.decrementLikeCount(productId)
 }
