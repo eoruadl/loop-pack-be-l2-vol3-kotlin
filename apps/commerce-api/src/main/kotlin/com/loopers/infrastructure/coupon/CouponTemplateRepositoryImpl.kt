@@ -14,4 +14,6 @@ class CouponTemplateRepositoryImpl(
     override fun findById(id: Long): CouponTemplateModel? = jpa.findById(id).orElse(null)
     override fun findAll(pageable: Pageable): Page<CouponTemplateModel> = jpa.findAll(pageable)
     override fun deleteById(id: Long) = jpa.deleteById(id)
+    override fun incrementIssuedCountIfAvailable(id: Long): Boolean = jpa.incrementIssuedCountIfAvailable(id) > 0
+    override fun decrementIssuedCount(id: Long): Boolean = jpa.decrementIssuedCount(id) > 0
 }

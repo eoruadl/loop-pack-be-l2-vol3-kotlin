@@ -1,5 +1,6 @@
 package com.loopers.application.order
 
+import org.springframework.context.ApplicationEventPublisher
 import com.loopers.domain.coupon.CouponTemplateService
 import com.loopers.domain.coupon.UserCouponService
 import com.loopers.domain.order.OrderItemService
@@ -57,12 +58,22 @@ class OrderFacadeTest {
     private val userService: UserService = mockk()
     private val userCouponService: UserCouponService = mockk()
     private val couponTemplateService: CouponTemplateService = mockk()
+    private val applicationEventPublisher: ApplicationEventPublisher = mockk(relaxed = true)
 
     private lateinit var orderFacade: OrderFacade
 
     @BeforeEach
     fun setUp() {
-        orderFacade = OrderFacade(orderService, orderItemService, productService, productInventoryService, userService, userCouponService, couponTemplateService)
+        orderFacade = OrderFacade(
+            orderService,
+            orderItemService,
+            productService,
+            productInventoryService,
+            userService,
+            userCouponService,
+            couponTemplateService,
+            applicationEventPublisher,
+        )
     }
 
     private fun createUserModel(

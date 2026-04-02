@@ -35,5 +35,12 @@ class CardNoTest {
             }
             assertEquals(ErrorType.BAD_REQUEST, exception.errorType)
         }
+
+        @Test
+        fun `카드 번호 마스킹 시 마지막 4자리만 남긴다`() {
+            val masked = CardNo("1234-5678-9012-3456").masked()
+
+            assertEquals("****-****-****-3456", masked)
+        }
     }
 }

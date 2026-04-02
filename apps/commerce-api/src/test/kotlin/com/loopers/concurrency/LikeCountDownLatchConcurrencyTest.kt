@@ -32,6 +32,14 @@ class LikeCountDownLatchConcurrencyTest @Autowired constructor(
     private val passwordEncryptor: PasswordEncryptor,
     private val databaseCleanUp: DatabaseCleanUp,
 ) {
+    private fun waitUntil(condition: () -> Boolean) {
+        repeat(100) {
+            if (condition()) return
+            Thread.sleep(100)
+        }
+        error("조건이 만족되지 않았습니다.")
+    }
+
 
     @AfterEach
     fun tearDown() = databaseCleanUp.truncateAllTables()
@@ -98,6 +106,7 @@ class LikeCountDownLatchConcurrencyTest @Autowired constructor(
         assertThat(successCount.get()).isEqualTo(totalThreads)
         assertThat(failCount.get()).isEqualTo(0)
 
+        waitUntil { productService.getProductById(product.id).likeCount.value == totalThreads.toLong() }
         val updatedProduct = productService.getProductById(product.id)
         assertThat(updatedProduct.likeCount.value).isEqualTo(totalThreads.toLong())
     }
@@ -163,6 +172,7 @@ class LikeCountDownLatchConcurrencyTest @Autowired constructor(
         assertThat(successCount.get()).isEqualTo(2)
         assertThat(failCount.get()).isEqualTo(0)
 
+        waitUntil { productService.getProductById(product.id).likeCount.value == 0L }
         val updatedProduct = productService.getProductById(product.id)
         assertThat(updatedProduct.likeCount.value).isEqualTo(0L)
     }

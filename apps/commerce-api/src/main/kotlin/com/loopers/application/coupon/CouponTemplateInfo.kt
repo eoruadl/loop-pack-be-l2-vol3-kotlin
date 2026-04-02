@@ -10,6 +10,8 @@ data class CouponTemplateInfo(
     val value: Long,
     val minOrderAmount: Long?,
     val expiredAt: ZonedDateTime,
+    val issueLimit: Long?,
+    val issuedCount: Long,
     val createdAt: ZonedDateTime,
     val updatedAt: ZonedDateTime,
 ) {
@@ -21,6 +23,8 @@ data class CouponTemplateInfo(
             value = model.value.value,
             minOrderAmount = model.minOrderAmount?.value,
             expiredAt = model.expiredAt,
+            issueLimit = model.issueLimit,
+            issuedCount = model.issuedCount,
             createdAt = model.createdAt,
             updatedAt = model.updatedAt,
         )

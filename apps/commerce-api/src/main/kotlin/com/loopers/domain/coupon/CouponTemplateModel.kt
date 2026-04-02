@@ -20,6 +20,8 @@ class CouponTemplateModel(
     value: CouponValue,
     minOrderAmount: MinOrderAmount?,
     expiredAt: ZonedDateTime,
+    issueLimit: Long? = null,
+    issuedCount: Long = 0L,
 ) : BaseEntity() {
 
     @Column(nullable = false)
@@ -43,10 +45,22 @@ class CouponTemplateModel(
     var expiredAt: ZonedDateTime = expiredAt
         protected set
 
+    @Column(name = "issue_limit")
+    var issueLimit: Long? = issueLimit
+        protected set
+
+    @Column(name = "issued_count", nullable = false)
+    var issuedCount: Long = issuedCount
+        protected set
+
     override fun guard() {
         if (type == CouponType.RATE) {
             require(value.value in 1..100) { "정률 쿠폰의 할인율은 1 이상 100 이하여야 합니다." }
         }
+        val currentIssueLimit = issueLimit
+        require(currentIssueLimit == null || currentIssueLimit > 0) { "발급 수량 제한은 1 이상이어야 합니다." }
+        require(issuedCount >= 0) { "발급된 수량은 0 이상이어야 합니다." }
+        require(currentIssueLimit == null || issuedCount <= currentIssueLimit) { "발급된 수량은 제한 수량을 초과할 수 없습니다." }
     }
 
     fun update(
@@ -55,12 +69,14 @@ class CouponTemplateModel(
         value: CouponValue,
         minOrderAmount: MinOrderAmount?,
         expiredAt: ZonedDateTime,
+        issueLimit: Long?,
     ) {
         this.name = name
         this.type = type
         this.value = value
         this.minOrderAmount = minOrderAmount
         this.expiredAt = expiredAt
+        this.issueLimit = issueLimit
     }
 
     fun calculate(orderAmount: Long): Long {

@@ -41,6 +41,7 @@ class CouponAdminV1Controller(
             value = request.value,
             minOrderAmount = request.minOrderAmount,
             expiredAt = request.expiredAt,
+            issueLimit = request.issueLimit,
         ).let { CouponAdminV1Dto.CouponTemplateResponse.from(it) }
          .let { ApiResponse.success(it) }
 
@@ -56,6 +57,7 @@ class CouponAdminV1Controller(
             value = request.value,
             minOrderAmount = request.minOrderAmount,
             expiredAt = request.expiredAt,
+            issueLimit = request.issueLimit,
         ).let { CouponAdminV1Dto.CouponTemplateResponse.from(it) }
          .let { ApiResponse.success(it) }
 

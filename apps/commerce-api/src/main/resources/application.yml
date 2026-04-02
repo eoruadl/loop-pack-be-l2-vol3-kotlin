@@ -20,6 +20,7 @@ spring:
   config:
     import:
       - jpa.yml
+      - kafka.yml
       - redis.yml
       - logging.yml
       - monitoring.yml
@@ -28,6 +29,17 @@ springdoc:
   use-fqn: true
   swagger-ui:
     path: /swagger-ui.html
+
+app:
+  kafka:
+    topics:
+      catalog-events: catalog-events
+      order-events: order-events
+      coupon-issue-requests: coupon-issue-requests
+      coupon-issue-requests-replication-factor: 1
+    consumers:
+      coupon-issue-requests:
+        concurrency: 8
 
 resilience4j:
   circuitbreaker:
@@ -50,6 +62,15 @@ spring:
   config:
     activate:
       on-profile: local, test
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  kafka:
+    listener:
+      auto-startup: false
 
 ---
 spring:

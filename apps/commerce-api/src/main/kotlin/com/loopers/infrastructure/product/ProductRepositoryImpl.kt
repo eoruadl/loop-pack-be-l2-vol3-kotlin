@@ -3,6 +3,8 @@ package com.loopers.infrastructure.product
 import com.loopers.domain.product.Name
 import com.loopers.domain.product.ProductModel
 import com.loopers.domain.product.ProductRepository
+import jakarta.persistence.EntityManager
+import jakarta.persistence.PersistenceContext
 import org.springframework.data.domain.Page
 import org.springframework.stereotype.Repository
 import org.springframework.data.domain.Pageable
@@ -10,6 +12,8 @@ import org.springframework.data.domain.Pageable
 @Repository
 class ProductRepositoryImpl(
     private val productJpaRepository: ProductJpaRepository,
+    @PersistenceContext
+    private val entityManager: EntityManager,
 ) : ProductRepository {
 
     override fun save(product: ProductModel): ProductModel {
@@ -36,9 +40,17 @@ class ProductRepositoryImpl(
         return productJpaRepository.existsByBrandIdAndName(brandId, name)
     }
 
-    override fun incrementLikeCount(id: Long) =
-        productJpaRepository.incrementLikeCount(id)
+    override fun incrementLikeCount(id: Long) {
+        entityManager.createNativeQuery(
+            "UPDATE tb_product SET like_count = like_count + 1 WHERE id = :id",
+        ).setParameter("id", id)
+            .executeUpdate()
+    }
 
-    override fun decrementLikeCount(id: Long) =
-        productJpaRepository.decrementLikeCount(id)
+    override fun decrementLikeCount(id: Long) {
+        entityManager.createNativeQuery(
+            "UPDATE tb_product SET like_count = GREATEST(like_count - 1, 0) WHERE id = :id",
+        ).setParameter("id", id)
+            .executeUpdate()
+    }
 }

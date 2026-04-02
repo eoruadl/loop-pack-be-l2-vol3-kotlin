@@ -1,7 +1,9 @@
 package com.loopers.application.order
 
+import com.loopers.application.audit.OrderPaymentAuditEvent
 import com.loopers.domain.coupon.CouponTemplateService
 import com.loopers.domain.coupon.UserCouponService
+import com.loopers.domain.audit.OrderPaymentAuditEventType
 import com.loopers.domain.order.ImageUrl
 import com.loopers.domain.order.OrderItemModel
 import com.loopers.domain.order.OrderItemService
@@ -16,6 +18,7 @@ import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -31,6 +34,7 @@ class OrderFacade(
     private val userService: UserService,
     private val userCouponService: UserCouponService,
     private val couponTemplateService: CouponTemplateService,
+    private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
     @Transactional
     fun createOrder(loginId: String, items: List<OrderItemRequest>, couponId: Long?): OrderInfo {
@@ -74,6 +78,15 @@ class OrderFacade(
                         imageUrl = ImageUrl(product.imageUrl.value),
                     )
                 }
+            )
+            applicationEventPublisher.publishEvent(
+                OrderPaymentAuditEvent(
+                    eventType = OrderPaymentAuditEventType.ORDER_PLACED,
+                    orderId = order.id,
+                    userId = user.id,
+                    orderStatus = order.status.name,
+                    occurredAt = order.createdAt,
+                )
             )
             return OrderInfo.from(order, savedItems)
         } catch (e: ObjectOptimisticLockingFailureException) {

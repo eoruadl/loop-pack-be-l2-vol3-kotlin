@@ -6,6 +6,7 @@ import com.loopers.domain.order.OrderService
 import com.loopers.domain.order.OrderStatus
 import com.loopers.domain.order.OriginalAmount
 import com.loopers.domain.order.TotalAmount
+import com.loopers.application.order.OrderEventOutboxService
 import com.loopers.domain.payment.CardNo
 import com.loopers.domain.payment.CardType
 import com.loopers.domain.payment.PaymentModel
@@ -13,6 +14,7 @@ import com.loopers.domain.payment.PaymentRepository
 import com.loopers.domain.payment.PaymentService
 import com.loopers.domain.payment.PaymentStatus
 import com.loopers.domain.payment.PgTransactionId
+import com.loopers.messaging.order.OrderEventType
 import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
@@ -21,6 +23,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.context.ApplicationEventPublisher
 import java.time.ZonedDateTime
 
 @ExtendWith(MockKExtension::class)
@@ -30,6 +33,8 @@ class PaymentRecoveryFacadeTest {
     private val paymentService: PaymentService = PaymentService(paymentRepository)
     private val orderService: OrderService = mockk()
     private val pgPaymentPort: PgPaymentPort = mockk()
+    private val applicationEventPublisher: ApplicationEventPublisher = mockk(relaxed = true)
+    private val orderEventOutboxService: OrderEventOutboxService = mockk(relaxed = true)
 
     private lateinit var paymentRecoveryFacade: PaymentRecoveryFacade
 
@@ -39,6 +44,8 @@ class PaymentRecoveryFacadeTest {
             paymentService = paymentService,
             orderService = orderService,
             pgPaymentPort = pgPaymentPort,
+            applicationEventPublisher = applicationEventPublisher,
+            orderEventOutboxService = orderEventOutboxService,
         )
     }
 
@@ -104,11 +111,21 @@ class PaymentRecoveryFacadeTest {
 
             verify { paymentRepository.save(match { it.status == PaymentStatus.COMPLETED }) }
             verify(exactly = 1) { orderService.payOrder(10L) }
+            verify {
+                orderEventOutboxService.enqueue(
+                    match {
+                        it.eventType == OrderEventType.PAYMENT_RECOVERED &&
+                            it.orderId == 10L &&
+                            it.paymentId == 0L
+                    }
+                )
+            }
         }
 
         @Test
         fun `pgTxId 있고 PG 실패 결과 시 FAILED 전이`() {
             val payment = createPaymentModel(pgTxId = "pg-tx-abc")
+            val order = createOrderModel()
 
             every { paymentRepository.findById(0L) } returns payment
             every { pgPaymentPort.getPayment("pg-tx-abc", 1L) } returns PgPaymentStatusResponse(
@@ -117,6 +134,7 @@ class PaymentRecoveryFacadeTest {
                 failureCode = PgFailureCode.UNKNOWN,
             )
             every { paymentRepository.save(any()) } answers { firstArg() }
+            every { orderService.getOrderById(10L) } returns order
 
             paymentRecoveryFacade.recoverPayment(0L)
 
@@ -146,10 +164,12 @@ class PaymentRecoveryFacadeTest {
         @Test
         fun `pgTxId 없고 PG 주문 조회 결과 없을 때 FAILED 전이`() {
             val payment = createPaymentModel(pgTxId = null)
+            val order = createOrderModel()
 
             every { paymentRepository.findById(0L) } returns payment
             every { pgPaymentPort.getPaymentByOrderId(10L, 1L) } returns null
             every { paymentRepository.save(any()) } answers { firstArg() }
+            every { orderService.getOrderById(10L) } returns order
 
             paymentRecoveryFacade.recoverPayment(0L)
 

@@ -19,6 +19,7 @@ class CouponTemplateService(
         value: Long,
         minOrderAmount: Long?,
         expiredAt: ZonedDateTime,
+        issueLimit: Long? = null,
     ): CouponTemplateModel {
         return couponTemplateRepository.save(
             CouponTemplateModel(
@@ -27,6 +28,7 @@ class CouponTemplateService(
                 value = CouponValue(value),
                 minOrderAmount = minOrderAmount?.let { MinOrderAmount(it) },
                 expiredAt = expiredAt,
+                issueLimit = issueLimit,
             )
         )
     }
@@ -50,14 +52,19 @@ class CouponTemplateService(
         value: Long,
         minOrderAmount: Long?,
         expiredAt: ZonedDateTime,
+        issueLimit: Long? = null,
     ): CouponTemplateModel {
         val template = getTemplateById(id)
+        if (issueLimit != null && issueLimit < template.issuedCount) {
+            throw CoreException(ErrorType.BAD_REQUEST, "발급 제한 수량은 현재 발급 수량보다 작을 수 없습니다.")
+        }
         template.update(
             name = CouponName(name),
             type = type,
             value = CouponValue(value),
             minOrderAmount = minOrderAmount?.let { MinOrderAmount(it) },
             expiredAt = expiredAt,
+            issueLimit = issueLimit,
         )
         return template
     }
@@ -66,5 +73,24 @@ class CouponTemplateService(
     fun deleteTemplate(id: Long) {
         val template = getTemplateById(id)
         template.delete()
+    }
+
+    @Transactional
+    fun reserveIssue(id: Long) {
+        getTemplateById(id)
+        if (!couponTemplateRepository.incrementIssuedCountIfAvailable(id)) {
+            throw CoreException(ErrorType.CONFLICT, "쿠폰이 모두 소진되었습니다.")
+        }
+    }
+
+    @Transactional
+    fun tryReserveIssue(id: Long): Boolean {
+        getTemplateById(id)
+        return couponTemplateRepository.incrementIssuedCountIfAvailable(id)
+    }
+
+    @Transactional
+    fun releaseIssue(id: Long) {
+        couponTemplateRepository.decrementIssuedCount(id)
     }
 }

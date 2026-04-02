@@ -11,6 +11,7 @@ class DemoKafkaConsumer {
     @KafkaListener(
         topics = ["\${demo-kafka.test.topic-name}"],
         containerFactory = KafkaConfig.BATCH_LISTENER,
+        groupId = "\${spring.kafka.consumer.group-id:loopers-default-consumer}",
     )
     fun demoListener(
         messages: List<ConsumerRecord<Any, Any>>,

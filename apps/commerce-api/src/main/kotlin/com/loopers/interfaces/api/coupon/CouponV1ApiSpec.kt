@@ -37,4 +37,22 @@ interface CouponV1ApiSpec {
         @Parameter(hidden = true) @RequireAuth authenticatedUser: AuthenticatedUser,
         @PathVariable couponId: Long,
     ): ApiResponse<CouponV1Dto.UserCouponResponse>
+
+    @Operation(
+        summary = "쿠폰 발급 요청",
+        description = "인증된 사용자의 쿠폰 발급 요청을 비동기로 접수합니다.",
+    )
+    fun requestCouponIssue(
+        @Parameter(hidden = true) @RequireAuth authenticatedUser: AuthenticatedUser,
+        @PathVariable couponId: Long,
+    ): ApiResponse<CouponV1Dto.CouponIssueRequestResponse>
+
+    @Operation(
+        summary = "쿠폰 발급 요청 조회",
+        description = "비동기 쿠폰 발급 요청의 처리 상태를 조회합니다.",
+    )
+    fun getCouponIssueRequest(
+        @Parameter(hidden = true) @RequireAuth authenticatedUser: AuthenticatedUser,
+        @PathVariable requestId: String,
+    ): ApiResponse<CouponV1Dto.CouponIssueRequestResponse>
 }
