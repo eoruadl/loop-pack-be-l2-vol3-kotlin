@@ -6,6 +6,7 @@ import com.loopers.domain.queue.TokenConsumeResult
 import com.loopers.domain.user.UserService
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
 @Component
@@ -13,8 +14,12 @@ class OrderQueueAdmissionGuard(
     private val userService: UserService,
     private val orderQueueTokenService: OrderQueueTokenService,
     private val orderRequestRateLimitService: OrderRequestRateLimitService,
+    @Value("\${app.queue.admission.enforce-order-token:true}")
+    private val enforceOrderToken: Boolean,
 ) {
     fun ensureCreateOrderAllowed(loginId: String, queueToken: String?) {
+        if (!enforceOrderToken) return
+
         val user = userService.getUserByLoginId(loginId)
         val requestedToken = queueToken?.takeIf { it.isNotBlank() }
             ?: throw CoreException(ErrorType.FORBIDDEN, "주문 대기열 입장 토큰이 필요합니다.")
