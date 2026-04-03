@@ -4,6 +4,7 @@ import com.loopers.application.order.OrderFacade
 import com.loopers.application.order.OrderInfo
 import com.loopers.application.payment.PaymentFacade
 import com.loopers.application.payment.PaymentInfo
+import com.loopers.application.queue.OrderQueueAdmissionGuard
 import com.loopers.domain.payment.CardType
 import com.loopers.domain.payment.PaymentStatus
 import com.loopers.application.useraction.UserActionEvent
@@ -27,8 +28,9 @@ class OrderV1ControllerTest {
 
     private val orderFacade: OrderFacade = mockk()
     private val paymentFacade: PaymentFacade = mockk()
+    private val orderQueueAdmissionGuard: OrderQueueAdmissionGuard = mockk(relaxed = true)
     private val applicationEventPublisher: ApplicationEventPublisher = mockk(relaxed = true)
-    private val controller = OrderV1Controller(orderFacade, paymentFacade, applicationEventPublisher)
+    private val controller = OrderV1Controller(orderFacade, paymentFacade, orderQueueAdmissionGuard, applicationEventPublisher)
 
     @Test
     fun `주문 생성 시 유저 액션 이벤트를 발행한다`() {
@@ -37,21 +39,23 @@ class OrderV1ControllerTest {
 
         controller.createOrder(
             AuthenticatedUser("testuser", "1990-01-01"),
+            "queue-token",
             OrderV1Dto.CreateOrderRequest(
                 items = listOf(OrderV1Dto.CreateOrderRequest.OrderItemRequest(1L, 1L)),
                 cardType = CardType.SAMSUNG.name,
                 cardNo = "1234-5678-9012-3456",
-            )
+            ),
         )
 
         verify {
+            orderQueueAdmissionGuard.ensureCreateOrderAllowed("testuser", "queue-token")
             applicationEventPublisher.publishEvent(
                 match<UserActionEvent> {
                     it.actionType == UserActionType.ORDER_CREATE &&
                         it.actorLoginId == "testuser" &&
                         it.targetType == UserActionTargetType.ORDER &&
                         it.targetId == 1L
-                }
+                },
             )
         }
     }
@@ -73,7 +77,7 @@ class OrderV1ControllerTest {
                     it.actionType == UserActionType.ORDER_LIST_VIEW &&
                         it.actorLoginId == "testuser" &&
                         it.targetType == UserActionTargetType.ORDER
-                }
+                },
             )
         }
     }
@@ -94,7 +98,7 @@ class OrderV1ControllerTest {
                         it.actorLoginId == "testuser" &&
                         it.targetType == UserActionTargetType.ORDER &&
                         it.targetId == 1L
-                }
+                },
             )
         }
     }

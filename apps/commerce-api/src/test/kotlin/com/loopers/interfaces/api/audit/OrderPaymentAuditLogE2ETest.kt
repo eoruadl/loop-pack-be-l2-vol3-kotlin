@@ -10,6 +10,7 @@ import com.loopers.application.payment.PgPaymentTimeoutException
 import com.loopers.application.product.ProductFacade
 import com.loopers.domain.audit.OrderPaymentAuditEventType
 import com.loopers.domain.brand.BrandService
+import com.loopers.domain.queue.OrderQueueTokenService
 import com.loopers.domain.payment.CardType
 import com.loopers.domain.user.BirthDate
 import com.loopers.domain.user.Email
@@ -24,6 +25,7 @@ import com.loopers.interfaces.api.ApiResponse
 import com.loopers.interfaces.api.order.OrderV1Dto
 import com.loopers.interfaces.api.payment.PaymentV1Dto
 import com.loopers.utils.DatabaseCleanUp
+import com.loopers.utils.RedisCleanUp
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.DisplayName
@@ -41,16 +43,21 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = ["spring.task.scheduling.enabled=false"],
+)
 class OrderPaymentAuditLogE2ETest @Autowired constructor(
     private val testRestTemplate: TestRestTemplate,
     private val brandService: BrandService,
     private val productFacade: ProductFacade,
+    private val orderQueueTokenService: OrderQueueTokenService,
     private val userJpaRepository: UserJpaRepository,
     private val paymentJpaRepository: PaymentJpaRepository,
     private val auditLogJpaRepository: OrderPaymentAuditLogJpaRepository,
     private val passwordEncryptor: PasswordEncryptor,
     private val databaseCleanUp: DatabaseCleanUp,
+    private val redisCleanUp: RedisCleanUp,
     private val fakePgPaymentClient: FakePgPaymentClient,
 ) {
     companion object {
@@ -107,6 +114,7 @@ class OrderPaymentAuditLogE2ETest @Autowired constructor(
     fun tearDown() {
         fakePgPaymentClient.reset()
         databaseCleanUp.truncateAllTables()
+        redisCleanUp.truncateAll()
     }
 
     private fun createUser(loginId: String = "testuser") = userJpaRepository.save(
@@ -116,7 +124,7 @@ class OrderPaymentAuditLogE2ETest @Autowired constructor(
             name = Name("홍길동"),
             birthDate = BirthDate("1990-01-01"),
             email = Email("$loginId@example.com"),
-        )
+        ),
     )
 
     private fun createBrand() = brandService.createBrand(
@@ -145,6 +153,16 @@ class OrderPaymentAuditLogE2ETest @Autowired constructor(
         set("X-Loopers-LoginPw", TEST_PASSWORD)
     }
 
+    private fun grantAdmissionToken(loginId: String = "testuser"): String {
+        val user = userJpaRepository.findByLoginId(LoginId(loginId))
+            ?: error("user not found for loginId=$loginId")
+        return orderQueueTokenService.issueToken(user.id).token
+    }
+
+    private fun authHeadersWithQueueToken(loginId: String = "testuser", queueToken: String) = authHeaders(loginId).apply {
+        set("X-Queue-Token", queueToken)
+    }
+
     private fun createOrderRequest(productId: Long) = OrderV1Dto.CreateOrderRequest(
         items = listOf(OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId = productId, quantity = 1L)),
         cardType = CardType.SAMSUNG.name,
@@ -159,12 +177,13 @@ class OrderPaymentAuditLogE2ETest @Autowired constructor(
         fun `주문 생성과 결제 요청 성공 시 감사로그가 순서대로 적재된다`() {
             createUser()
             val product = createProduct(createBrand().id)
+            val queueToken = grantAdmissionToken()
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
             val response = testRestTemplate.exchange(
                 ORDERS,
                 HttpMethod.POST,
-                HttpEntity(createOrderRequest(product.id), authHeaders()),
+                HttpEntity(createOrderRequest(product.id), authHeadersWithQueueToken(queueToken = queueToken)),
                 responseType,
             )
 
@@ -183,12 +202,13 @@ class OrderPaymentAuditLogE2ETest @Autowired constructor(
             createUser()
             val product = createProduct(createBrand().id)
             fakePgPaymentClient.shouldFailRequest = true
+            val queueToken = grantAdmissionToken()
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
             val response = testRestTemplate.exchange(
                 ORDERS,
                 HttpMethod.POST,
-                HttpEntity(createOrderRequest(product.id), authHeaders()),
+                HttpEntity(createOrderRequest(product.id), authHeadersWithQueueToken(queueToken = queueToken)),
                 responseType,
             )
 
@@ -206,12 +226,13 @@ class OrderPaymentAuditLogE2ETest @Autowired constructor(
         fun `결제 성공 콜백 수신 시 성공 감사로그가 추가된다`() {
             createUser()
             val product = createProduct(createBrand().id)
+            val queueToken = grantAdmissionToken()
 
             val createResponseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
             testRestTemplate.exchange(
                 ORDERS,
                 HttpMethod.POST,
-                HttpEntity(createOrderRequest(product.id), authHeaders()),
+                HttpEntity(createOrderRequest(product.id), authHeadersWithQueueToken(queueToken = queueToken)),
                 createResponseType,
             )
 
@@ -244,12 +265,13 @@ class OrderPaymentAuditLogE2ETest @Autowired constructor(
         fun `결제 실패 콜백 수신 시 실패 감사로그가 추가된다`() {
             createUser()
             val product = createProduct(createBrand().id)
+            val queueToken = grantAdmissionToken()
 
             val createResponseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
             testRestTemplate.exchange(
                 ORDERS,
                 HttpMethod.POST,
-                HttpEntity(createOrderRequest(product.id), authHeaders()),
+                HttpEntity(createOrderRequest(product.id), authHeadersWithQueueToken(queueToken = queueToken)),
                 createResponseType,
             )
 
@@ -283,12 +305,13 @@ class OrderPaymentAuditLogE2ETest @Autowired constructor(
             createUser()
             val product = createProduct(createBrand().id)
             fakePgPaymentClient.shouldTimeout = true
+            val queueToken = grantAdmissionToken()
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
             val response = testRestTemplate.exchange(
                 ORDERS,
                 HttpMethod.POST,
-                HttpEntity(createOrderRequest(product.id), authHeaders()),
+                HttpEntity(createOrderRequest(product.id), authHeadersWithQueueToken(queueToken = queueToken)),
                 responseType,
             )
             assertThat(response.statusCode).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -315,12 +338,13 @@ class OrderPaymentAuditLogE2ETest @Autowired constructor(
             createUser()
             val product = createProduct(createBrand().id)
             fakePgPaymentClient.shouldTimeout = true
+            val queueToken = grantAdmissionToken()
 
             val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
             val response = testRestTemplate.exchange(
                 ORDERS,
                 HttpMethod.POST,
-                HttpEntity(createOrderRequest(product.id), authHeaders()),
+                HttpEntity(createOrderRequest(product.id), authHeadersWithQueueToken(queueToken = queueToken)),
                 responseType,
             )
             assertThat(response.statusCode).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR)

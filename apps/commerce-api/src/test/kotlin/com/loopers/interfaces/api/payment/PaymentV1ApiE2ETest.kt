@@ -9,6 +9,7 @@ import com.loopers.application.payment.PgPaymentStatusResponse
 import com.loopers.application.payment.PgPaymentTimeoutException
 import com.loopers.application.product.ProductFacade
 import com.loopers.domain.brand.BrandService
+import com.loopers.domain.queue.OrderQueueTokenService
 import com.loopers.domain.payment.CardType
 import com.loopers.domain.payment.PaymentStatus
 import com.loopers.domain.user.BirthDate
@@ -22,6 +23,7 @@ import com.loopers.infrastructure.user.UserJpaRepository
 import com.loopers.interfaces.api.ApiResponse
 import com.loopers.interfaces.api.order.OrderV1Dto
 import com.loopers.utils.DatabaseCleanUp
+import com.loopers.utils.RedisCleanUp
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.DisplayName
@@ -39,15 +41,20 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = ["spring.task.scheduling.enabled=false"],
+)
 class PaymentV1ApiE2ETest @Autowired constructor(
     private val testRestTemplate: TestRestTemplate,
     private val brandService: BrandService,
     private val productFacade: ProductFacade,
+    private val orderQueueTokenService: OrderQueueTokenService,
     private val userJpaRepository: UserJpaRepository,
     private val paymentJpaRepository: PaymentJpaRepository,
     private val passwordEncryptor: PasswordEncryptor,
     private val databaseCleanUp: DatabaseCleanUp,
+    private val redisCleanUp: RedisCleanUp,
     private val fakePgPaymentClient: FakePgPaymentClient,
 ) {
     companion object {
@@ -101,6 +108,7 @@ class PaymentV1ApiE2ETest @Autowired constructor(
     fun tearDown() {
         fakePgPaymentClient.reset()
         databaseCleanUp.truncateAllTables()
+        redisCleanUp.truncateAll()
     }
 
     private fun createUser(loginId: String = "testuser") = userJpaRepository.save(
@@ -110,7 +118,7 @@ class PaymentV1ApiE2ETest @Autowired constructor(
             name = Name("홍길동"),
             birthDate = BirthDate("1990-01-01"),
             email = Email("$loginId@example.com"),
-        )
+        ),
     )
 
     private fun createBrand() = brandService.createBrand(
@@ -139,7 +147,18 @@ class PaymentV1ApiE2ETest @Autowired constructor(
         set("X-Loopers-LoginPw", TEST_PASSWORD)
     }
 
+    private fun grantAdmissionToken(loginId: String = "testuser"): String {
+        val user = userJpaRepository.findByLoginId(LoginId(loginId))
+            ?: error("user not found for loginId=$loginId")
+        return orderQueueTokenService.issueToken(user.id).token
+    }
+
+    private fun authHeadersWithQueueToken(loginId: String = "testuser", queueToken: String) = authHeaders(loginId).apply {
+        set("X-Queue-Token", queueToken)
+    }
+
     private fun createOrderWithPayment(productId: Long): OrderV1Dto.OrderResponse? {
+        val queueToken = grantAdmissionToken()
         val request = OrderV1Dto.CreateOrderRequest(
             items = listOf(OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId = productId, quantity = 1L)),
             cardType = CardType.SAMSUNG.name,
@@ -149,7 +168,7 @@ class PaymentV1ApiE2ETest @Autowired constructor(
         return testRestTemplate.exchange(
             ORDERS,
             HttpMethod.POST,
-            HttpEntity(request, authHeaders()),
+            HttpEntity(request, authHeadersWithQueueToken(queueToken = queueToken)),
             responseType,
         ).body?.data
     }

@@ -1,13 +1,13 @@
 package com.loopers.interfaces.api.order
 
 import com.loopers.application.order.OrderFacade
-import com.loopers.application.payment.PgFailureCode
 import com.loopers.application.payment.PgPaymentPort
 import com.loopers.application.payment.PgPaymentRequest
 import com.loopers.application.payment.PgPaymentResponse
 import com.loopers.application.payment.PgPaymentStatusResponse
 import com.loopers.application.product.ProductFacade
 import com.loopers.domain.brand.BrandService
+import com.loopers.domain.queue.OrderQueueTokenService
 import com.loopers.domain.payment.CardType
 import com.loopers.domain.user.BirthDate
 import com.loopers.domain.user.Email
@@ -18,6 +18,7 @@ import com.loopers.domain.user.UserModel
 import com.loopers.infrastructure.user.UserJpaRepository
 import com.loopers.interfaces.api.ApiResponse
 import com.loopers.utils.DatabaseCleanUp
+import com.loopers.utils.RedisCleanUp
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.DisplayName
@@ -36,16 +37,22 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import java.time.LocalDate
+import java.time.Instant
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = ["spring.task.scheduling.enabled=false"],
+)
 class OrderV1ApiE2ETest @Autowired constructor(
     private val testRestTemplate: TestRestTemplate,
     private val brandService: BrandService,
     private val productFacade: ProductFacade,
     private val orderFacade: OrderFacade,
+    private val orderQueueTokenService: OrderQueueTokenService,
     private val userJpaRepository: UserJpaRepository,
     private val passwordEncryptor: PasswordEncryptor,
     private val databaseCleanUp: DatabaseCleanUp,
+    private val redisCleanUp: RedisCleanUp,
 ) {
     companion object {
         private const val ORDERS = "/api/v1/orders"
@@ -78,6 +85,7 @@ class OrderV1ApiE2ETest @Autowired constructor(
     @AfterEach
     fun tearDown() {
         databaseCleanUp.truncateAllTables()
+        redisCleanUp.truncateAll()
     }
 
     private fun createUser(loginId: String = "testuser") = userJpaRepository.save(
@@ -87,7 +95,7 @@ class OrderV1ApiE2ETest @Autowired constructor(
             name = Name("홍길동"),
             birthDate = BirthDate("1990-01-01"),
             email = Email("$loginId@example.com"),
-        )
+        ),
     )
 
     private fun createBrand() = brandService.createBrand(
@@ -120,6 +128,25 @@ class OrderV1ApiE2ETest @Autowired constructor(
         set(LDAP_HEADER, LDAP_VALUE)
     }
 
+    private fun grantAdmissionToken(loginId: String = "testuser"): String {
+        val user = userJpaRepository.findByLoginId(LoginId(loginId))
+            ?: error("user not found for loginId=$loginId")
+        return orderQueueTokenService.issueToken(user.id).token
+    }
+
+    private fun grantDelayedAdmissionToken(loginId: String = "testuser", delayMillis: Long): String {
+        val user = userJpaRepository.findByLoginId(LoginId(loginId))
+            ?: error("user not found for loginId=$loginId")
+        return orderQueueTokenService.issueToken(
+            user.id,
+            usableAt = Instant.now().plusMillis(delayMillis),
+        ).token
+    }
+
+    private fun authHeadersWithQueueToken(loginId: String = "testuser", queueToken: String) = authHeaders(loginId).apply {
+        set("X-Queue-Token", queueToken)
+    }
+
     @DisplayName("POST /api/v1/orders")
     @Nested
     inner class CreateOrder {
@@ -130,6 +157,7 @@ class OrderV1ApiE2ETest @Autowired constructor(
             createUser()
             val brand = createBrand()
             val product = createProduct(brand.id)
+            val queueToken = grantAdmissionToken()
 
             val request = OrderV1Dto.CreateOrderRequest(
                 items = listOf(OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId = product.id, quantity = 2L)),
@@ -141,7 +169,7 @@ class OrderV1ApiE2ETest @Autowired constructor(
             val response = testRestTemplate.exchange(
                 ORDERS,
                 HttpMethod.POST,
-                HttpEntity(request, authHeaders()),
+                HttpEntity(request, authHeadersWithQueueToken(queueToken = queueToken)),
                 responseType,
             )
 
@@ -151,6 +179,7 @@ class OrderV1ApiE2ETest @Autowired constructor(
                 { assertThat(response.body?.data?.items).hasSize(1) },
                 { assertThat(response.body?.data?.items?.first()?.quantity).isEqualTo(2L) },
                 { assertThat(response.body?.data?.paymentId).isNotNull() },
+                { assertThat(orderQueueTokenService.hasActiveToken(userJpaRepository.findByLoginId(LoginId("testuser"))!!.id)).isFalse() },
             )
         }
 
@@ -183,9 +212,34 @@ class OrderV1ApiE2ETest @Autowired constructor(
             createUser()
             val brand = createBrand()
             val product = createProduct(brand.id, quantity = 1L)
+            val queueToken = grantAdmissionToken()
 
             val request = OrderV1Dto.CreateOrderRequest(
                 items = listOf(OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId = product.id, quantity = 5L)),
+                cardType = DEFAULT_CARD_TYPE,
+                cardNo = DEFAULT_CARD_NO,
+            )
+
+            val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
+            val response = testRestTemplate.exchange(
+                ORDERS,
+                HttpMethod.POST,
+                HttpEntity(request, authHeadersWithQueueToken(queueToken = queueToken)),
+                responseType,
+            )
+
+            assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+        }
+
+        @Test
+        @DisplayName("입장 토큰 없이 주문 요청하면 403을 반환한다")
+        fun createOrder_whenNoAdmissionToken_thenReturns403() {
+            createUser()
+            val brand = createBrand()
+            val product = createProduct(brand.id)
+
+            val request = OrderV1Dto.CreateOrderRequest(
+                items = listOf(OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId = product.id, quantity = 1L)),
                 cardType = DEFAULT_CARD_TYPE,
                 cardNo = DEFAULT_CARD_NO,
             )
@@ -198,7 +252,159 @@ class OrderV1ApiE2ETest @Autowired constructor(
                 responseType,
             )
 
-            assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+            assertThat(response.statusCode).isEqualTo(HttpStatus.FORBIDDEN)
+        }
+
+        @Test
+        @DisplayName("잘못된 입장 토큰으로 주문 요청하면 403을 반환한다")
+        fun createOrder_whenInvalidAdmissionToken_thenReturns403() {
+            createUser()
+            val brand = createBrand()
+            val product = createProduct(brand.id)
+            grantAdmissionToken()
+
+            val request = OrderV1Dto.CreateOrderRequest(
+                items = listOf(OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId = product.id, quantity = 1L)),
+                cardType = DEFAULT_CARD_TYPE,
+                cardNo = DEFAULT_CARD_NO,
+            )
+
+            val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
+            val response = testRestTemplate.exchange(
+                ORDERS,
+                HttpMethod.POST,
+                HttpEntity(request, authHeadersWithQueueToken(queueToken = "invalid-token")),
+                responseType,
+            )
+
+            assertThat(response.statusCode).isEqualTo(HttpStatus.FORBIDDEN)
+        }
+
+        @Test
+        @DisplayName("아직 usableAt 전인 토큰으로 주문 요청하면 429를 반환한다")
+        fun createOrder_whenTokenNotYetUsable_thenReturns429() {
+            createUser()
+            val brand = createBrand()
+            val product = createProduct(brand.id)
+            val queueToken = grantDelayedAdmissionToken(delayMillis = 1500)
+
+            val request = OrderV1Dto.CreateOrderRequest(
+                items = listOf(OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId = product.id, quantity = 1L)),
+                cardType = DEFAULT_CARD_TYPE,
+                cardNo = DEFAULT_CARD_NO,
+            )
+
+            val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
+            val response = testRestTemplate.exchange(
+                ORDERS,
+                HttpMethod.POST,
+                HttpEntity(request, authHeadersWithQueueToken(queueToken = queueToken)),
+                responseType,
+            )
+
+            assertThat(response.statusCode).isEqualTo(HttpStatus.TOO_MANY_REQUESTS)
+        }
+
+        @Test
+        @DisplayName("만료된 입장 토큰으로 주문 요청하면 403을 반환한다")
+        fun createOrder_whenExpiredAdmissionToken_thenReturns403() {
+            createUser()
+            val brand = createBrand()
+            val product = createProduct(brand.id)
+            val user = userJpaRepository.findByLoginId(LoginId("testuser"))
+                ?: error("user not found for loginId=testuser")
+            val queueToken = orderQueueTokenService.issueToken(
+                user.id,
+                ttl = java.time.Duration.ofMillis(100),
+            ).token
+            Thread.sleep(150)
+
+            val request = OrderV1Dto.CreateOrderRequest(
+                items = listOf(OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId = product.id, quantity = 1L)),
+                cardType = DEFAULT_CARD_TYPE,
+                cardNo = DEFAULT_CARD_NO,
+            )
+
+            val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
+            val response = testRestTemplate.exchange(
+                ORDERS,
+                HttpMethod.POST,
+                HttpEntity(request, authHeadersWithQueueToken(queueToken = queueToken)),
+                responseType,
+            )
+
+            assertThat(response.statusCode).isEqualTo(HttpStatus.FORBIDDEN)
+        }
+
+        @Test
+        @DisplayName("짧은 시간에 과도하게 주문 요청하면 429를 반환한다")
+        fun createOrder_whenRateLimitExceeded_thenReturns429() {
+            createUser()
+            val brand = createBrand()
+            val product = createProduct(brand.id, quantity = 10L)
+            grantAdmissionToken()
+
+            val request = OrderV1Dto.CreateOrderRequest(
+                items = listOf(OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId = product.id, quantity = 1L)),
+                cardType = DEFAULT_CARD_TYPE,
+                cardNo = DEFAULT_CARD_NO,
+            )
+
+            val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
+            val firstResponse = testRestTemplate.exchange(
+                ORDERS,
+                HttpMethod.POST,
+                HttpEntity(request, authHeadersWithQueueToken(queueToken = "invalid-token")),
+                responseType,
+            )
+            val secondResponse = testRestTemplate.exchange(
+                ORDERS,
+                HttpMethod.POST,
+                HttpEntity(request, authHeadersWithQueueToken(queueToken = "invalid-token")),
+                responseType,
+            )
+            val thirdResponse = testRestTemplate.exchange(
+                ORDERS,
+                HttpMethod.POST,
+                HttpEntity(request, authHeadersWithQueueToken(queueToken = "invalid-token")),
+                responseType,
+            )
+
+            assertThat(firstResponse.statusCode).isEqualTo(HttpStatus.FORBIDDEN)
+            assertThat(secondResponse.statusCode).isEqualTo(HttpStatus.FORBIDDEN)
+            assertThat(thirdResponse.statusCode).isEqualTo(HttpStatus.TOO_MANY_REQUESTS)
+        }
+
+        @Test
+        @DisplayName("이미 사용된 토큰으로 다시 주문 요청하면 403을 반환한다")
+        fun createOrder_whenTokenAlreadyConsumed_thenReturns403() {
+            createUser()
+            val brand = createBrand()
+            val product = createProduct(brand.id, quantity = 10L)
+            val queueToken = grantAdmissionToken()
+
+            val successRequest = OrderV1Dto.CreateOrderRequest(
+                items = listOf(OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId = product.id, quantity = 1L)),
+                cardType = DEFAULT_CARD_TYPE,
+                cardNo = DEFAULT_CARD_NO,
+            )
+
+            val responseType = object : ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
+            val firstResponse = testRestTemplate.exchange(
+                ORDERS,
+                HttpMethod.POST,
+                HttpEntity(successRequest, authHeadersWithQueueToken(queueToken = queueToken)),
+                responseType,
+            )
+            val secondResponse = testRestTemplate.exchange(
+                ORDERS,
+                HttpMethod.POST,
+                HttpEntity(successRequest, authHeadersWithQueueToken(queueToken = queueToken)),
+                responseType,
+            )
+
+            assertThat(firstResponse.statusCode).isEqualTo(HttpStatus.OK)
+            assertThat(secondResponse.statusCode).isEqualTo(HttpStatus.FORBIDDEN)
         }
     }
 
