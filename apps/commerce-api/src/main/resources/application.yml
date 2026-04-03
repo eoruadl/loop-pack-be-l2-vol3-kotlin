@@ -33,8 +33,8 @@ springdoc:
 app:
   queue:
     admission:
-      batch-size: 20
-      fixed-delay-millis: 1000
+      batch-size: 18
+      fixed-delay-millis: 100
       token-ttl: 5m
       order-rate-limit-max-requests: 2
       order-rate-limit-window: 1s
