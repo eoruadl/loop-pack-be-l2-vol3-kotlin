@@ -16,7 +16,7 @@ class OrderItemModel(
     quantity: Quantity,
     unitPrice: Price,
     productName: ProductName,
-    imageUrl: ImageUrl
+    imageUrl: ImageUrl,
 ) {
 
     @Id

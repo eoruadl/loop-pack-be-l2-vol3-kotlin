@@ -1,6 +1,5 @@
 package com.loopers.infrastructure.pg
 
-import com.loopers.application.payment.PgFailureCode
 import com.loopers.application.payment.PgPaymentFailException
 import com.loopers.application.payment.PgPaymentPort
 import com.loopers.application.payment.PgPaymentRequest

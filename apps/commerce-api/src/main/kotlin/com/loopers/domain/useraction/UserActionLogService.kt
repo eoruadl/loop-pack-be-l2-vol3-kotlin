@@ -20,7 +20,7 @@ class UserActionLogService(
                 targetId = command.targetId,
                 description = command.description,
                 occurredAt = command.occurredAt,
-            )
+            ),
         )
 
     @Transactional(readOnly = true)

@@ -36,8 +36,8 @@ class OrderEventOutboxServiceTest {
                     unitPrice = Price(10_000L),
                     productName = ProductName("상품"),
                     imageUrl = ImageUrl("image.png"),
-                )
-            )
+                ),
+            ),
         )
         whenever(outboxEventService.save(any())).thenAnswer {
             val command = it.getArgument<OutboxEventService.SaveOutboxEventCommand>(0)
@@ -56,7 +56,7 @@ class OrderEventOutboxServiceTest {
                 orderId = 1L,
                 paymentId = 10L,
                 userId = 1L,
-            )
+            ),
         )
 
         assertThat(saved.topic).isEqualTo("order-events")

@@ -1,9 +1,6 @@
 package com.loopers.domain.like
 
-import com.loopers.domain.like.LikeModel
-import com.loopers.domain.like.LikeRepository
 import io.mockk.every
-import io.mockk.justRun
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
 import io.mockk.verify

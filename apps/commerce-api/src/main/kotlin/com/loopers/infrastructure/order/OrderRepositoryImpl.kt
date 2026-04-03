@@ -9,7 +9,7 @@ import java.time.ZonedDateTime
 
 @Repository
 class OrderRepositoryImpl(
-    private val orderJpaRepository: OrderJpaRepository
+    private val orderJpaRepository: OrderJpaRepository,
 ) : OrderRepository {
     override fun save(order: OrderModel): OrderModel {
         return orderJpaRepository.save(order)

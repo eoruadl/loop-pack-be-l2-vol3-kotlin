@@ -25,7 +25,7 @@ class OrderPaymentAuditLogService(
                 pgTransactionId = command.pgTransactionId,
                 reason = command.reason,
                 occurredAt = command.occurredAt,
-            )
+            ),
         )
 
     @Transactional(readOnly = true)

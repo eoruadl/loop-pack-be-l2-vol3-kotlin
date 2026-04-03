@@ -1,7 +1,5 @@
 package com.loopers.domain.order
 
-import com.loopers.domain.order.OrderItemModel
-import com.loopers.domain.order.OrderItemRepository
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 

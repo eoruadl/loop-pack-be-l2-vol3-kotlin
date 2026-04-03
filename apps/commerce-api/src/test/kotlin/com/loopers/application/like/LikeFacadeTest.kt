@@ -75,14 +75,14 @@ class LikeFacadeTest {
             verify(applicationEventPublisher).publishEvent(
                 argThat<LikeCountChangedEvent> {
                     productId == 1L && type == LikeCountChangedEvent.Type.INCREASE
-                }
+                },
             )
             verify(catalogEventOutboxService).enqueue(
                 argThat {
                     productId == 1L &&
                         actorLoginId == "testuser" &&
                         eventType == CatalogEventType.PRODUCT_LIKED
-                }
+                },
             )
         }
 
@@ -115,14 +115,14 @@ class LikeFacadeTest {
             verify(applicationEventPublisher).publishEvent(
                 argThat<LikeCountChangedEvent> {
                     productId == 1L && type == LikeCountChangedEvent.Type.DECREASE
-                }
+                },
             )
             verify(catalogEventOutboxService).enqueue(
                 argThat {
                     productId == 1L &&
                         actorLoginId == "testuser" &&
                         eventType == CatalogEventType.PRODUCT_UNLIKED
-                }
+                },
             )
         }
 
@@ -145,7 +145,7 @@ class LikeFacadeTest {
         @Test
         fun `본인이 좋아요한 상품 목록 조회 시 LikeInfo 목록을 반환한다`() {
             // given
-            val userModel = createTestUserModel()  // user.id = 0 (기본값)
+            val userModel = createTestUserModel() // user.id = 0 (기본값)
             val likeModels = listOf(
                 createTestLikeModel(userId = 0L, productId = 1L),
                 createTestLikeModel(userId = 0L, productId = 2L),
@@ -168,7 +168,7 @@ class LikeFacadeTest {
         @Test
         fun `타인의 좋아요 목록 조회 시 FORBIDDEN 예외가 발생한다`() {
             // given
-            val userModel = createTestUserModel()  // user.id = 0 (기본값)
+            val userModel = createTestUserModel() // user.id = 0 (기본값)
 
             whenever(userService.getUserByLoginId(any())).thenReturn(userModel)
 

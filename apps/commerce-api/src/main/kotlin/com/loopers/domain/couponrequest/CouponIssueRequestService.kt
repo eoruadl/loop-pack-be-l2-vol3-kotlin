@@ -17,7 +17,7 @@ class CouponIssueRequestService(
                 requestId = UUID.randomUUID().toString(),
                 userId = userId,
                 couponTemplateId = couponTemplateId,
-            )
+            ),
         )
 
     @Transactional(readOnly = true)

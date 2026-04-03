@@ -21,8 +21,10 @@ data class PgPaymentResponse(
 
 data class PgPaymentStatusResponse(
     val pgTransactionId: String,
-    val status: String,           // PENDING | SUCCESS | FAILED
-    val failureCode: PgFailureCode?,  // FAILED 상태일 때만 의미 있음
+    // PENDING | SUCCESS | FAILED
+    val status: String,
+    // FAILED 상태일 때만 의미 있음
+    val failureCode: PgFailureCode?,
 )
 
 enum class PgFailureCode { LIMIT_EXCEEDED, INVALID_CARD, UNKNOWN }

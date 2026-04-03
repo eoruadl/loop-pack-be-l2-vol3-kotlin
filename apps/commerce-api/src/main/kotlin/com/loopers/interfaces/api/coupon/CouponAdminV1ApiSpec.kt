@@ -57,7 +57,9 @@ interface CouponAdminV1ApiSpec {
             ),
         ],
     )
-    fun createTemplate(@RequestBody request: CouponAdminV1Dto.CreateCouponTemplateRequest): ApiResponse<CouponAdminV1Dto.CouponTemplateResponse>
+    fun createTemplate(
+        @RequestBody request: CouponAdminV1Dto.CreateCouponTemplateRequest,
+    ): ApiResponse<CouponAdminV1Dto.CouponTemplateResponse>
 
     @Operation(
         summary = "쿠폰 템플릿 수정",

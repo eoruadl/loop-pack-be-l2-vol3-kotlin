@@ -33,7 +33,7 @@ class CatalogEventOutboxService(
                 eventKey = message.productId.toString(),
                 eventType = message.eventType.name,
                 payload = objectMapper.writeValueAsString(message),
-            )
+            ),
         )
     }
 }

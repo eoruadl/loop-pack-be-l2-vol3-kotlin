@@ -39,7 +39,7 @@ class ProductV1Controller(
                         actionType = UserActionType.PRODUCT_LIST_VIEW,
                         targetType = UserActionTargetType.PRODUCT,
                         description = "상품 목록 조회",
-                    )
+                    ),
                 )
             }
             .map { ProductV1Dto.ProductResponse.from(it) }
@@ -55,14 +55,14 @@ class ProductV1Controller(
                         targetType = UserActionTargetType.PRODUCT,
                         targetId = productId,
                         description = "상품 상세 조회",
-                    )
+                    ),
                 )
                 catalogEventOutboxService.enqueue(
                     CatalogEventOutboxCommand(
                         eventType = CatalogEventType.PRODUCT_VIEWED,
                         productId = productId,
                         actorLoginId = null,
-                    )
+                    ),
                 )
             }
             .let { ProductV1Dto.ProductResponse.from(it) }

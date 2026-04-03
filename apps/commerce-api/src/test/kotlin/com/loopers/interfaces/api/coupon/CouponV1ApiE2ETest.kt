@@ -54,7 +54,7 @@ class CouponV1ApiE2ETest @Autowired constructor(
             name = Name("홍길동"),
             birthDate = BirthDate("1990-01-01"),
             email = Email("$loginId@example.com"),
-        )
+        ),
     )
 
     private fun createTemplate(

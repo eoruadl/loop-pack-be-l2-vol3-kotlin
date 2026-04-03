@@ -48,7 +48,7 @@ class CouponIssueRequestOutboxServiceTest {
                 failureReason = null,
                 createdAt = ZonedDateTime.now(),
                 updatedAt = ZonedDateTime.now(),
-            )
+            ),
         )
 
         assertThat(saved.topic).isEqualTo("coupon-issue-requests")

@@ -1,8 +1,5 @@
 package com.loopers.domain.product
 
-import com.loopers.domain.product.ProductInventoryModel
-import com.loopers.domain.product.ProductInventoryRepository
-import com.loopers.domain.product.Stock
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import org.springframework.stereotype.Component

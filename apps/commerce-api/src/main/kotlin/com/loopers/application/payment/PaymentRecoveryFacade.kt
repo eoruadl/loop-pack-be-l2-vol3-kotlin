@@ -8,8 +8,6 @@ import com.loopers.domain.order.OrderService
 import com.loopers.domain.payment.PaymentStatus
 import com.loopers.domain.payment.PaymentService
 import com.loopers.messaging.order.OrderEventType
-import com.loopers.support.error.CoreException
-import com.loopers.support.error.ErrorType
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Component
@@ -57,7 +55,7 @@ class PaymentRecoveryFacade(
                         maskedCardNo = completedPayment.cardNo.masked(),
                         pgTransactionId = completedPayment.pgTxId?.value ?: pgStatusResponse.pgTransactionId,
                         reason = "결제 복구 성공",
-                    )
+                    ),
                 )
                 orderEventOutboxService.enqueue(
                     OrderEventOutboxCommand(
@@ -65,7 +63,7 @@ class PaymentRecoveryFacade(
                         orderId = completedPayment.orderId,
                         paymentId = completedPayment.id,
                         userId = completedPayment.userId,
-                    )
+                    ),
                 )
             }
             "FAILED" -> when (pgStatusResponse.failureCode) {
@@ -120,7 +118,7 @@ class PaymentRecoveryFacade(
                 maskedCardNo = payment.cardNo.masked(),
                 pgTransactionId = payment.pgTxId?.value,
                 reason = reason,
-            )
+            ),
         )
     }
 }

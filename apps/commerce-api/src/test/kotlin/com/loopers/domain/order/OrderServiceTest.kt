@@ -1,11 +1,5 @@
 package com.loopers.domain.order
 
-import com.loopers.domain.order.DiscountAmount
-import com.loopers.domain.order.OrderModel
-import com.loopers.domain.order.OrderRepository
-import com.loopers.domain.order.OrderStatus
-import com.loopers.domain.order.OriginalAmount
-import com.loopers.domain.order.TotalAmount
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import io.mockk.every

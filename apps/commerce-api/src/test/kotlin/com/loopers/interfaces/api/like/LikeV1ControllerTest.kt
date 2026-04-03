@@ -35,7 +35,7 @@ class LikeV1ControllerTest {
                         it.actorLoginId == "testuser" &&
                         it.targetType == UserActionTargetType.PRODUCT &&
                         it.targetId == 1L
-                }
+                },
             )
         }
     }
@@ -53,7 +53,7 @@ class LikeV1ControllerTest {
                         it.actorLoginId == "testuser" &&
                         it.targetType == UserActionTargetType.PRODUCT &&
                         it.targetId == 1L
-                }
+                },
             )
         }
     }

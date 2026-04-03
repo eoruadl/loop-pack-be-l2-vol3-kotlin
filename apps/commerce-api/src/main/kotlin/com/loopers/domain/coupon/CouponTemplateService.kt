@@ -29,7 +29,7 @@ class CouponTemplateService(
                 minOrderAmount = minOrderAmount?.let { MinOrderAmount(it) },
                 expiredAt = expiredAt,
                 issueLimit = issueLimit,
-            )
+            ),
         )
     }
 

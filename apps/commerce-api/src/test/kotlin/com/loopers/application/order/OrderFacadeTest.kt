@@ -259,7 +259,7 @@ class OrderFacadeTest {
         @Test
         fun `타인의 주문 조회 시 FORBIDDEN 예외`() {
             // given
-            val user = createUserModel()                     // user.id = 0 (기본값)
+            val user = createUserModel() // user.id = 0 (기본값)
             val otherOrder = createOrderModel(userId = 999L) // 다른 유저의 주문
 
             every { userService.getUserByLoginId("testuser") } returns user
@@ -322,7 +322,7 @@ class OrderFacadeTest {
             assertNotNull(result)
             assertEquals(50_000L, result.totalAmount)
             assertEquals(1, result.items.size)
-            assertEquals(50_000L, result.items[0].subTotal)  // 25_000 x 2
+            assertEquals(50_000L, result.items[0].subTotal) // 25_000 x 2
         }
     }
 }

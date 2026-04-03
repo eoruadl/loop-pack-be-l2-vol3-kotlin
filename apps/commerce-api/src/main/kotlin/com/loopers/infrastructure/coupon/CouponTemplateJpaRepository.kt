@@ -14,7 +14,7 @@ interface CouponTemplateJpaRepository : JpaRepository<CouponTemplateModel, Long>
         set c.issuedCount = c.issuedCount + 1
         where c.id = :id
           and (c.issueLimit is null or c.issuedCount < c.issueLimit)
-        """
+        """,
     )
     fun incrementIssuedCountIfAvailable(@Param("id") id: Long): Int
 
@@ -25,7 +25,7 @@ interface CouponTemplateJpaRepository : JpaRepository<CouponTemplateModel, Long>
         set c.issuedCount = c.issuedCount - 1
         where c.id = :id
           and c.issuedCount > 0
-        """
+        """,
     )
     fun decrementIssuedCount(@Param("id") id: Long): Int
 }
