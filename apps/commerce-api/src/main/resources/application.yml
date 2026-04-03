@@ -31,6 +31,13 @@ springdoc:
     path: /swagger-ui.html
 
 app:
+  queue:
+    admission:
+      batch-size: 20
+      fixed-delay-millis: 1000
+      token-ttl: 5m
+      order-rate-limit-max-requests: 2
+      order-rate-limit-window: 1s
   kafka:
     topics:
       catalog-events: catalog-events
