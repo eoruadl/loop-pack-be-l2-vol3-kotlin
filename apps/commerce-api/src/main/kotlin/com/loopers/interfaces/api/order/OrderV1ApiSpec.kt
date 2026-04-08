@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestParam
 import java.time.LocalDate
 
@@ -36,10 +37,18 @@ interface OrderV1ApiSpec {
                 schema = Schema(type = "string"),
                 `in` = ParameterIn.HEADER,
             ),
+            Parameter(
+                name = "X-Queue-Token",
+                description = "주문 대기열 입장 토큰",
+                required = true,
+                schema = Schema(type = "string"),
+                `in` = ParameterIn.HEADER,
+            ),
         ],
     )
     fun createOrder(
         @Parameter(hidden = true) @RequireAuth authenticatedUser: AuthenticatedUser,
+        @RequestHeader("X-Queue-Token", required = false) queueToken: String?,
         @RequestBody request: OrderV1Dto.CreateOrderRequest,
     ): ApiResponse<OrderV1Dto.OrderResponse>
 

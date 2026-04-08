@@ -35,7 +35,7 @@ class LikeV1Controller(
                         targetType = UserActionTargetType.PRODUCT,
                         targetId = productId,
                         description = "상품 좋아요",
-                    )
+                    ),
                 )
             }
             .let { LikeV1Dto.LikeResponse.from(it) }
@@ -54,7 +54,7 @@ class LikeV1Controller(
                 targetType = UserActionTargetType.PRODUCT,
                 targetId = productId,
                 description = "상품 좋아요 취소",
-            )
+            ),
         )
         return ApiResponse.success(Unit)
     }

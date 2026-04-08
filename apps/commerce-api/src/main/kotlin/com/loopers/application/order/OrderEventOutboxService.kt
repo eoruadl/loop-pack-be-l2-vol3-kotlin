@@ -43,7 +43,7 @@ class OrderEventOutboxService(
                 eventKey = message.orderId.toString(),
                 eventType = message.eventType.name,
                 payload = objectMapper.writeValueAsString(message),
-            )
+            ),
         )
     }
 }

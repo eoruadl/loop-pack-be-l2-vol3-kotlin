@@ -40,7 +40,6 @@ class LikeFacadeIntegrationTest @Autowired constructor(
         error("조건이 만족되지 않았습니다.")
     }
 
-
     @AfterEach
     fun tearDown() {
         databaseCleanUp.truncateAllTables()
@@ -55,7 +54,7 @@ class LikeFacadeIntegrationTest @Autowired constructor(
             name = Name("홍길동"),
             birthDate = BirthDate("1990-01-01"),
             email = Email("$loginId@example.com"),
-        )
+        ),
     )
 
     private fun createBrand() = brandService.createBrand(

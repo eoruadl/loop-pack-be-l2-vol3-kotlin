@@ -77,7 +77,7 @@ class OrderFacade(
                         productName = ProductName(product.name.value),
                         imageUrl = ImageUrl(product.imageUrl.value),
                     )
-                }
+                },
             )
             applicationEventPublisher.publishEvent(
                 OrderPaymentAuditEvent(
@@ -86,7 +86,7 @@ class OrderFacade(
                     userId = user.id,
                     orderStatus = order.status.name,
                     occurredAt = order.createdAt,
-                )
+                ),
             )
             return OrderInfo.from(order, savedItems)
         } catch (e: ObjectOptimisticLockingFailureException) {

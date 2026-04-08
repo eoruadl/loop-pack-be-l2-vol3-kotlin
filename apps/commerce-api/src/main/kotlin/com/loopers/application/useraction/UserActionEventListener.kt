@@ -24,7 +24,7 @@ class UserActionEventListener(
                     targetId = event.targetId,
                     description = event.description,
                     occurredAt = event.occurredAt,
-                )
+                ),
             )
         }.onFailure { throwable ->
             log.warn(

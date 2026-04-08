@@ -59,7 +59,7 @@ class PaymentFacade(
                     cardType = cardType.name,
                     cardNo = cardNo,
                     callbackUrl = callbackUrl,
-                )
+                ),
             )
             val updatedPayment = paymentService.setPgTransactionId(payment.id, pgResponse.pgTransactionId)
             applicationEventPublisher.publishEvent(
@@ -73,7 +73,7 @@ class PaymentFacade(
                     cardType = updatedPayment.cardType.name,
                     maskedCardNo = updatedPayment.cardNo.masked(),
                     pgTransactionId = updatedPayment.pgTxId?.value,
-                )
+                ),
             )
         } catch (e: PgPaymentFailException) {
             val failedPayment = paymentService.failPayment(payment.id)
@@ -88,7 +88,7 @@ class PaymentFacade(
                     cardType = failedPayment.cardType.name,
                     maskedCardNo = failedPayment.cardNo.masked(),
                     reason = e.message ?: "PG 결제 요청 실패",
-                )
+                ),
             )
             throw CoreException(ErrorType.BAD_REQUEST, "PG 결제 요청에 실패했습니다.")
         } catch (e: PgPaymentTimeoutException) {
@@ -103,7 +103,7 @@ class PaymentFacade(
                     cardType = cardType.name,
                     maskedCardNo = CardNo(cardNo).masked(),
                     reason = e.message ?: "PG 결제 요청 타임아웃",
-                )
+                ),
             )
             throw CoreException(ErrorType.INTERNAL_ERROR, "PG 결제 요청이 타임아웃되었습니다.")
         }
@@ -131,7 +131,7 @@ class PaymentFacade(
                         maskedCardNo = completedPayment.cardNo.masked(),
                         pgTransactionId = completedPayment.pgTxId?.value,
                         reason = reason,
-                    )
+                    ),
                 )
                 orderEventOutboxService.enqueue(
                     OrderEventOutboxCommand(
@@ -139,7 +139,7 @@ class PaymentFacade(
                         orderId = completedPayment.orderId,
                         paymentId = completedPayment.id,
                         userId = completedPayment.userId,
-                    )
+                    ),
                 )
             }
             else -> when (parseFailureCode(reason)) {
@@ -176,7 +176,7 @@ class PaymentFacade(
                 maskedCardNo = payment.cardNo.masked(),
                 pgTransactionId = payment.pgTxId?.value,
                 reason = reason,
-            )
+            ),
         )
     }
 }

@@ -73,7 +73,7 @@ class PaymentModel(
 
     fun complete() {
         check(status == PaymentStatus.PENDING) {
-            "${status} 상태에서는 완료 처리할 수 없습니다."
+            "$status 상태에서는 완료 처리할 수 없습니다."
         }
         status = PaymentStatus.COMPLETED
     }
@@ -83,7 +83,7 @@ class PaymentModel(
             "올바르지 않은 실패 상태입니다: $failStatus"
         }
         check(status == PaymentStatus.PENDING) {
-            "${status} 상태에서는 실패 처리할 수 없습니다."
+            "$status 상태에서는 실패 처리할 수 없습니다."
         }
         status = failStatus
     }

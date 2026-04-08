@@ -35,7 +35,7 @@ class CatalogEventOutboxServiceTest {
                 eventType = CatalogEventType.PRODUCT_LIKED,
                 productId = 1L,
                 actorLoginId = "testuser",
-            )
+            ),
         )
 
         assertThat(saved.topic).isEqualTo("catalog-events")

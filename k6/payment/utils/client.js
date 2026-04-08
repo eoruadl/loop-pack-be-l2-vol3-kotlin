@@ -1,8 +1,8 @@
 import http from 'k6/http';
 import { check } from 'k6';
 
-export const BASE_URL = 'http://localhost:8080';
-export const ACTUATOR_URL = 'http://localhost:8081';
+export const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+export const ACTUATOR_URL = __ENV.ACTUATOR_URL || 'http://localhost:8081';
 
 export function authHeaders(loginId, password) {
   return {

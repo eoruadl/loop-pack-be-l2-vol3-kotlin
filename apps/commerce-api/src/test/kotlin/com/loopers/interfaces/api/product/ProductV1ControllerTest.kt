@@ -38,7 +38,7 @@ class ProductV1ControllerTest {
                 match<UserActionEvent> {
                     it.actionType == UserActionType.PRODUCT_LIST_VIEW &&
                         it.targetType == UserActionTargetType.PRODUCT
-                }
+                },
             )
         }
     }
@@ -55,14 +55,14 @@ class ProductV1ControllerTest {
                     it.actionType == UserActionType.PRODUCT_DETAIL_VIEW &&
                         it.targetType == UserActionTargetType.PRODUCT &&
                         it.targetId == 1L
-                }
+                },
             )
         }
         verify {
             catalogEventOutboxService.enqueue(
                 match<CatalogEventOutboxCommand> {
                     it.productId == 1L && it.eventType.name == "PRODUCT_VIEWED"
-                }
+                },
             )
         }
     }

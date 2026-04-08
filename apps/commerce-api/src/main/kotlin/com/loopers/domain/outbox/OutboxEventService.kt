@@ -17,7 +17,7 @@ class OutboxEventService(
                 eventKey = command.eventKey,
                 eventType = command.eventType,
                 payload = command.payload,
-            )
+            ),
         )
 
     @Transactional(readOnly = true)

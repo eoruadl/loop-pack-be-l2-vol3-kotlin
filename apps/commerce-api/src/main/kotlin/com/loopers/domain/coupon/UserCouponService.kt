@@ -23,7 +23,7 @@ class UserCouponService(
                     userId = userId,
                     couponTemplateId = couponTemplateId,
                     status = UserCouponStatus.AVAILABLE,
-                )
+                ),
             )
         } catch (e: DataIntegrityViolationException) {
             throw CoreException(ErrorType.CONFLICT, "이미 발급된 쿠폰입니다.")
@@ -41,7 +41,7 @@ class UserCouponService(
                     userId = userId,
                     couponTemplateId = couponTemplateId,
                     status = UserCouponStatus.AVAILABLE,
-                )
+                ),
             )
             true
         } catch (_: DataIntegrityViolationException) {

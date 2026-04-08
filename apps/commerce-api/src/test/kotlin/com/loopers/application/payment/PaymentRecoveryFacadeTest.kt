@@ -117,7 +117,7 @@ class PaymentRecoveryFacadeTest {
                         it.eventType == OrderEventType.PAYMENT_RECOVERED &&
                             it.orderId == 10L &&
                             it.paymentId == 0L
-                    }
+                    },
                 )
             }
         }

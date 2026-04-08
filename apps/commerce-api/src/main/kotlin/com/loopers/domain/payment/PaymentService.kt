@@ -22,7 +22,7 @@ class PaymentService(
                 userId = userId,
                 cardType = cardType,
                 cardNo = CardNo(cardNo),
-            )
+            ),
         )
     }
 

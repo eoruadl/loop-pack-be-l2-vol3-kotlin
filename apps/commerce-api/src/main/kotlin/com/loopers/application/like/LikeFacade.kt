@@ -28,14 +28,14 @@ class LikeFacade(
                 LikeCountChangedEvent(
                     productId = productId,
                     type = LikeCountChangedEvent.Type.INCREASE,
-                )
+                ),
             )
             catalogEventOutboxService.enqueue(
                 CatalogEventOutboxCommand(
                     eventType = CatalogEventType.PRODUCT_LIKED,
                     productId = productId,
                     actorLoginId = user.loginId.value,
-                )
+                ),
             )
         }
         return LikeInfo.from(likeModel)
@@ -50,14 +50,14 @@ class LikeFacade(
                 LikeCountChangedEvent(
                     productId = productId,
                     type = LikeCountChangedEvent.Type.DECREASE,
-                )
+                ),
             )
             catalogEventOutboxService.enqueue(
                 CatalogEventOutboxCommand(
                     eventType = CatalogEventType.PRODUCT_UNLIKED,
                     productId = productId,
                     actorLoginId = user.loginId.value,
-                )
+                ),
             )
         }
     }

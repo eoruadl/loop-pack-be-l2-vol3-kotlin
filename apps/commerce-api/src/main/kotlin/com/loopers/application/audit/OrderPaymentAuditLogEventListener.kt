@@ -25,7 +25,7 @@ class OrderPaymentAuditLogEventListener(
                 pgTransactionId = event.pgTransactionId,
                 reason = event.reason,
                 occurredAt = event.occurredAt,
-            )
+            ),
         )
     }
 }

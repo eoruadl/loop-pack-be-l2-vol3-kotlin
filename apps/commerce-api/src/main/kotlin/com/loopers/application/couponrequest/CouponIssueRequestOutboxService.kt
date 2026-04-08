@@ -35,7 +35,7 @@ class CouponIssueRequestOutboxService(
                 eventKey = requestInfo.couponTemplateId.toString(),
                 eventType = "COUPON_ISSUE_REQUESTED",
                 payload = objectMapper.writeValueAsString(message),
-            )
+            ),
         )
     }
 }

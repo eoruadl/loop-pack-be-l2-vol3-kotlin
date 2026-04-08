@@ -61,7 +61,6 @@ class OrderModel(
 
     @PrePersist
     private fun prePersist() {
-
         val now = ZonedDateTime.now()
         createdAt = now
         updatedAt = now
@@ -69,7 +68,6 @@ class OrderModel(
 
     @PreUpdate
     private fun preUpdate() {
-
         val now = ZonedDateTime.now()
         updatedAt = now
     }
@@ -109,7 +107,7 @@ class OrderModel(
         check(
             status == OrderStatus.PAID ||
             status == OrderStatus.PREPARING ||
-            status == OrderStatus.DELIVERED
+            status == OrderStatus.DELIVERED,
         ) {
             throw IllegalStateException("${this.status} 상태에서는 취소 할 수 없습니다. 반품을 이용해주세요.")
         }

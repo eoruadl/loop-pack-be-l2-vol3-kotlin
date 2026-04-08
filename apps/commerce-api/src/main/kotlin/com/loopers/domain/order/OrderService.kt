@@ -1,9 +1,5 @@
 package com.loopers.domain.order
 
-import com.loopers.domain.order.OrderModel
-import com.loopers.domain.order.OrderRepository
-import com.loopers.domain.order.OrderStatus
-import com.loopers.domain.order.TotalAmount
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import org.springframework.data.domain.Page
@@ -32,7 +28,7 @@ class OrderService(
                 couponId = couponId,
                 totalAmount = TotalAmount(totalAmount),
                 status = OrderStatus.PENDING_PAYMENT,
-            )
+            ),
         )
     }
 

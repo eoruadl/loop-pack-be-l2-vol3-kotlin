@@ -66,7 +66,7 @@ class CouponIssueRequestFacadeTest {
                 value = CouponValue(1000L),
                 minOrderAmount = null,
                 expiredAt = ZonedDateTime.now().plusDays(1),
-            )
+            ),
         )
         whenever(couponIssueRequestRepository.save(any())).thenReturn(requestModel)
 

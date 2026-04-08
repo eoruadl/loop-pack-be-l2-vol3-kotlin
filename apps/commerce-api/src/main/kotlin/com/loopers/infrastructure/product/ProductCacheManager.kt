@@ -54,8 +54,11 @@ class ProductCacheManager(
 
     fun listTtl(sort: Sort): Duration {
         val order = sort.firstOrNull()
-        return if (order != null && order.property == "likeCount" && order.isDescending) LIST_TTL_SHORT
-        else LIST_TTL_LONG
+        return if (order != null && order.property == "likeCount" && order.isDescending) {
+            LIST_TTL_SHORT
+        } else {
+            LIST_TTL_LONG
+        }
     }
 
     fun getDetail(id: Long): ProductInfo? {
@@ -68,7 +71,11 @@ class ProductCacheManager(
     fun putDetail(info: ProductInfo) {
         val json = objectMapper.writeValueAsString(info)
         masterRedisTemplate.opsForValue().set(detailKey(info.id), json, jitter(DETAIL_TTL, DETAIL_JITTER))
-        masterRedisTemplate.opsForValue().set(likeCountKey(info.id), info.likeCount.toString(), jitter(LIKE_COUNT_TTL, LIKE_COUNT_JITTER))
+        masterRedisTemplate.opsForValue().set(
+            likeCountKey(info.id),
+            info.likeCount.toString(),
+            jitter(LIKE_COUNT_TTL, LIKE_COUNT_JITTER),
+        )
     }
 
     fun evictDetail(id: Long) {
@@ -95,8 +102,11 @@ class ProductCacheManager(
             totalPages = result.totalPages,
         )
         val json = objectMapper.writeValueAsString(cached)
-        val jitterOffset = if (sort.firstOrNull()?.let { it.property == "likeCount" && it.isDescending } == true)
-            LIST_JITTER_SHORT else LIST_JITTER_LONG
+        val jitterOffset = if (sort.firstOrNull()?.let { it.property == "likeCount" && it.isDescending } == true) {
+            LIST_JITTER_SHORT
+        } else {
+            LIST_JITTER_LONG
+        }
         masterRedisTemplate.opsForValue().set(key, json, jitter(listTtl(sort), jitterOffset))
     }
 

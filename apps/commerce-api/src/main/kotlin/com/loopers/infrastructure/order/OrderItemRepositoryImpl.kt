@@ -6,7 +6,7 @@ import org.springframework.stereotype.Repository
 
 @Repository
 class OrderItemRepositoryImpl(
-    private val orderItemJpaRepository: OrderItemJpaRepository
+    private val orderItemJpaRepository: OrderItemJpaRepository,
 ) : OrderItemRepository {
     override fun saveAll(items: List<OrderItemModel>): List<OrderItemModel> {
         return orderItemJpaRepository.saveAll(items)
@@ -15,5 +15,4 @@ class OrderItemRepositoryImpl(
     override fun findAllByOrderId(orderId: Long): List<OrderItemModel> {
         return orderItemJpaRepository.findAllByOrderId(orderId)
     }
-
 }

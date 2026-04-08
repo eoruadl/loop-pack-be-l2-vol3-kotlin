@@ -1,14 +1,5 @@
 package com.loopers.domain.brand
 
-import com.loopers.domain.brand.Address
-import com.loopers.domain.brand.BrandModel
-import com.loopers.domain.brand.BrandRepository
-import com.loopers.domain.brand.BusinessNumber
-import com.loopers.domain.brand.Description
-import com.loopers.domain.brand.Email
-import com.loopers.domain.brand.LogoImageUrl
-import com.loopers.domain.brand.Name
-import com.loopers.domain.brand.PhoneNumber
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import org.springframework.data.domain.Page

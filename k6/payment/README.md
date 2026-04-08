@@ -72,7 +72,49 @@ k6 run k6/scenarios/02-trip.js
 
 # 03: 전 사이클 관찰 (OPEN → HALF_OPEN → CLOSED, ~90s)
 k6 run k6/scenarios/03-recovery.js
+
+# 05: 주문 10,000건 처리시간 측정 (queue/token 플로우 포함)
+TOTAL_ITERATIONS=10000 VUS=50 USER_POOL_SIZE=200 \
+  k6 run k6/payment/scenarios/05-batch-size-measurement.js
 ```
+
+---
+
+## 배치 크기 산정용 측정 시나리오
+
+`05-batch-size-measurement.js` 는 다음 목적을 가진다.
+
+- 총 10,000건 주문 요청 수행
+- queue enter / position / token 획득 플로우는 그대로 사용
+- 실제 **주문 API 호출 자체의 duration** 만 `order_only_duration` metric 으로 별도 기록
+- `avg`, `p(95)`, `p(99)`, `p(99.9)` 를 확인해 배치 크기 산정 근거로 활용
+
+### 주요 파라미터
+
+- `TOTAL_ITERATIONS` : 총 주문 건수 (기본 10000)
+- `VUS` : 동시 사용자 수 (기본 50)
+- `USER_POOL_SIZE` : 재사용할 유저 풀 크기 (기본 200)
+- `QUEUE_POLL_TIMEOUT_SECONDS` : queue token 대기 최대 시간 (기본 180초)
+- `MAX_DURATION` : 전체 시나리오 최대 허용 시간 (기본 60분)
+
+### 해석 기준
+
+- `avg` : 전체 주문 요청의 평균 처리시간
+- `p(95)` : 전체 요청 중 95%가 이 시간 이하
+- `p(99)` : 전체 요청 중 99%가 이 시간 이하
+- `p(99.9)` : 전체 요청 중 99.9%가 이 시간 이하
+
+권장 batch size 산정은 보통:
+
+- `p(95)` 를 주 기준
+- `p(99)` / `p(99.9)` 를 tail latency 참고값
+
+으로 활용한다.
+
+### 사전 준비
+
+- 상품 재고는 `TOTAL_ITERATIONS` 이상 필요
+- queue admission batch-size / fixed-delay 가 너무 작으면 전체 측정 시간이 길어질 수 있음
 
 ---
 

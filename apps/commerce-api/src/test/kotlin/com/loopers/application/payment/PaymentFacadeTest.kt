@@ -73,7 +73,8 @@ class PaymentFacadeTest {
     )
 
     private fun createOrderModel(
-        userId: Long = 0L, // matches default user.id = 0
+        // matches default user.id = 0
+        userId: Long = 0L,
         totalAmount: Long = 50_000L,
         status: OrderStatus = OrderStatus.PENDING_PAYMENT,
     ): OrderModel {
@@ -162,7 +163,7 @@ class PaymentFacadeTest {
                         it.eventType == OrderEventType.PAYMENT_SUCCEEDED &&
                             it.orderId == 1L &&
                             it.paymentId == 0L
-                    }
+                    },
                 )
             }
         }

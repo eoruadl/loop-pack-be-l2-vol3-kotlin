@@ -22,7 +22,7 @@ class UserActionEventListenerTest {
                 actorLoginId = "testuser",
                 targetType = UserActionTargetType.PRODUCT,
                 targetId = 1L,
-            )
+            ),
         )
 
         verify(userActionLogService).record(org.mockito.kotlin.any())
@@ -39,7 +39,7 @@ class UserActionEventListenerTest {
                     actorLoginId = "testuser",
                     targetType = UserActionTargetType.ORDER,
                     targetId = 1L,
-                )
+                ),
             )
         }
     }

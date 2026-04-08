@@ -39,7 +39,7 @@ class CouponIssueRequestPartitionManager(
             AdminClient.create(
                 mapOf(
                     CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG to kafkaProperties.bootstrapServers.joinToString(","),
-                ) + kafkaProperties.properties
+                ) + kafkaProperties.properties,
             ).use { adminClient ->
                 val existingPartitionCount = describePartitionCount(adminClient)
                 when {
@@ -50,7 +50,7 @@ class CouponIssueRequestPartitionManager(
 
                     existingPartitionCount < desiredPartitionCount -> {
                         adminClient.createPartitions(
-                            mapOf(topicName to NewPartitions.increaseTo(desiredPartitionCount))
+                            mapOf(topicName to NewPartitions.increaseTo(desiredPartitionCount)),
                         ).all().get()
                         knownPartitionCount.set(desiredPartitionCount)
                     }
@@ -78,7 +78,7 @@ class CouponIssueRequestPartitionManager(
     private fun createTopic(adminClient: AdminClient, partitions: Int) {
         runCatching {
             adminClient.createTopics(
-                listOf(NewTopic(topicName, partitions, replicationFactor))
+                listOf(NewTopic(topicName, partitions, replicationFactor)),
             ).all().get()
         }.exceptionOrNull()?.let { throwable ->
             if (throwable.cause !is TopicExistsException && throwable !is TopicExistsException) {

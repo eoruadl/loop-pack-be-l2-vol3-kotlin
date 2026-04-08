@@ -46,7 +46,7 @@ class OutboxKafkaE2ETest @Autowired constructor(
                     eventType = CatalogEventType.PRODUCT_LIKED,
                     productId = 101L,
                     actorLoginId = "testuser",
-                )
+                ),
             )
 
             outboxEventPublisher.publishPendingEvents()
@@ -73,7 +73,7 @@ class OutboxKafkaE2ETest @Autowired constructor(
                     failureReason = null,
                     createdAt = java.time.ZonedDateTime.now(),
                     updatedAt = java.time.ZonedDateTime.now(),
-                )
+                ),
             )
 
             val targetPartition = TopicPartition("coupon-issue-requests", 2)

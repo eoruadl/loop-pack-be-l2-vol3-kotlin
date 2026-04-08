@@ -40,7 +40,6 @@ class LikeCountDownLatchConcurrencyTest @Autowired constructor(
         error("조건이 만족되지 않았습니다.")
     }
 
-
     @AfterEach
     fun tearDown() = databaseCleanUp.truncateAllTables()
 
@@ -57,7 +56,7 @@ class LikeCountDownLatchConcurrencyTest @Autowired constructor(
                     name = Name("홍길동"),
                     birthDate = BirthDate("1990-01-01"),
                     email = Email("$loginId@example.com"),
-                )
+                ),
             )
         }
 
@@ -121,7 +120,7 @@ class LikeCountDownLatchConcurrencyTest @Autowired constructor(
                 name = Name("홍길동"),
                 birthDate = BirthDate("1990-01-01"),
                 email = Email("$loginId@example.com"),
-            )
+            ),
         )
 
         val brand = brandService.createBrand(

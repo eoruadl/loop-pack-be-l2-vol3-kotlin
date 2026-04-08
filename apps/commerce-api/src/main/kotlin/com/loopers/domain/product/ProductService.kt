@@ -1,11 +1,5 @@
 package com.loopers.domain.product
 
-import com.loopers.domain.product.Description
-import com.loopers.domain.product.ImageUrl
-import com.loopers.domain.product.Name
-import com.loopers.domain.product.Price
-import com.loopers.domain.product.ProductModel
-import com.loopers.domain.product.ProductRepository
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import org.springframework.data.domain.Page

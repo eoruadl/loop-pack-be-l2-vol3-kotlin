@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
 
-
 @Tag(name = "Payment V1 API", description = "결제 API")
 interface PaymentV1ApiSpec {
 
