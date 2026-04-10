@@ -9,6 +9,7 @@ import com.loopers.messaging.catalog.CatalogEventType
 import com.loopers.messaging.order.OrderEventMessage
 import com.loopers.messaging.order.OrderEventType
 import com.loopers.testcontainers.KafkaTestContainersConfig
+import com.loopers.testcontainers.RedisTestContainersConfig
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -19,8 +20,8 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistry
 import org.springframework.kafka.core.KafkaTemplate
 import java.time.ZonedDateTime
 
-@SpringBootTest
-@Import(KafkaTestContainersConfig::class)
+@SpringBootTest(properties = ["spring.task.scheduling.enabled=false"])
+@Import(KafkaTestContainersConfig::class, RedisTestContainersConfig::class)
 class KafkaMetricsE2ETest @Autowired constructor(
     private val kafkaTemplate: KafkaTemplate<Any, Any>,
     private val productMetricsRepository: ProductMetricsRepository,
@@ -95,7 +96,7 @@ class KafkaMetricsE2ETest @Autowired constructor(
                         userId = 1L,
                         occurredAt = ZonedDateTime.now(),
                         items = listOf(
-                            OrderEventMessage.OrderEventItem(productId = 2L, quantity = 3L),
+                            OrderEventMessage.OrderEventItem(productId = 2L, quantity = 3L, unitPrice = 10_000L),
                         ),
                     )
                 )

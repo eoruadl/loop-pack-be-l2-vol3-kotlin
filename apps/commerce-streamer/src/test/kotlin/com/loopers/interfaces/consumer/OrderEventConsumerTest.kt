@@ -38,9 +38,9 @@ class OrderEventConsumerTest {
             paymentId = 10L,
             userId = 1L,
             occurredAt = ZonedDateTime.now(),
-            items = listOf(OrderEventMessage.OrderEventItem(productId = 1L, quantity = 2L)),
+            items = listOf(OrderEventMessage.OrderEventItem(productId = 1L, quantity = 2L, unitPrice = 10_000L)),
         )
-        whenever(eventHandledService.isHandled("order-evt-1")).thenReturn(false)
+        whenever(eventHandledService.isHandled("order-evt-1", OrderEventConsumer.HANDLER_NAME)).thenReturn(false)
 
         consumer.consume(recordOf(event), acknowledgment)
 
@@ -51,7 +51,7 @@ class OrderEventConsumerTest {
                     orderId == 100L
             }
         )
-        verify(eventHandledService).markHandled("order-evt-1", "order-events")
+        verify(eventHandledService).markHandled("order-evt-1", "order-events", OrderEventConsumer.HANDLER_NAME)
         verify(acknowledgment).acknowledge()
     }
 
@@ -64,9 +64,9 @@ class OrderEventConsumerTest {
             paymentId = 11L,
             userId = 1L,
             occurredAt = ZonedDateTime.now(),
-            items = listOf(OrderEventMessage.OrderEventItem(productId = 1L, quantity = 1L)),
+            items = listOf(OrderEventMessage.OrderEventItem(productId = 1L, quantity = 1L, unitPrice = 10_000L)),
         )
-        whenever(eventHandledService.isHandled("order-evt-2")).thenReturn(true)
+        whenever(eventHandledService.isHandled("order-evt-2", OrderEventConsumer.HANDLER_NAME)).thenReturn(true)
 
         consumer.consume(recordOf(event), acknowledgment)
 
