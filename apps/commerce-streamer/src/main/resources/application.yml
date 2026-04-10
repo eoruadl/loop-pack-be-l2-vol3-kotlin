@@ -26,11 +26,21 @@ spring:
       - monitoring.yml
 
 app:
+  ranking:
+    rollup:
+      hourly-cron: "0 1 * * * *"
+    finalize:
+      daily-cron: "0 10 0 * * *"
+    checkpoint:
+      cron: "0 */5 * * * *"
   kafka:
     topics:
       catalog-events: catalog-events
       order-events: order-events
       coupon-issue-requests: coupon-issue-requests
+    consumers:
+      rankings:
+        group-id: loopers-ranking-consumer
 
 demo-kafka:
   test:

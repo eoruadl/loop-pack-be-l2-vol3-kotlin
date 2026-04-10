@@ -38,7 +38,7 @@ class CatalogEventConsumerTest {
             actorLoginId = "testuser",
             occurredAt = ZonedDateTime.now(),
         )
-        whenever(eventHandledService.isHandled("evt-1")).thenReturn(false)
+        whenever(eventHandledService.isHandled("evt-1", CatalogEventConsumer.HANDLER_NAME)).thenReturn(false)
 
         consumer.consume(recordOf(event), acknowledgment)
 
@@ -50,7 +50,7 @@ class CatalogEventConsumerTest {
                     actorLoginId == "testuser"
             }
         )
-        verify(eventHandledService).markHandled("evt-1", "catalog-events")
+        verify(eventHandledService).markHandled("evt-1", "catalog-events", CatalogEventConsumer.HANDLER_NAME)
         verify(acknowledgment).acknowledge()
     }
 
@@ -63,7 +63,7 @@ class CatalogEventConsumerTest {
             actorLoginId = null,
             occurredAt = ZonedDateTime.now(),
         )
-        whenever(eventHandledService.isHandled("evt-2")).thenReturn(true)
+        whenever(eventHandledService.isHandled("evt-2", CatalogEventConsumer.HANDLER_NAME)).thenReturn(true)
 
         consumer.consume(recordOf(event), acknowledgment)
 

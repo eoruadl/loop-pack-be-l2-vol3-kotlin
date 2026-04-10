@@ -7,24 +7,35 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.PrePersist
 import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
 import java.time.ZonedDateTime
 
 @Entity
-@Table(name = "tb_event_handled")
+@Table(
+    name = "tb_event_handled",
+    uniqueConstraints = [
+        UniqueConstraint(columnNames = ["event_id", "handler_name"]),
+    ],
+)
 class EventHandledModel(
     eventId: String,
     topic: String,
+    handlerName: String,
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0
 
-    @Column(name = "event_id", nullable = false, unique = true)
+    @Column(name = "event_id", nullable = false)
     var eventId: String = eventId
         protected set
 
     @Column(name = "topic_name", nullable = false)
     var topic: String = topic
+        protected set
+
+    @Column(name = "handler_name", nullable = false)
+    var handlerName: String = handlerName
         protected set
 
     @Column(name = "created_at", nullable = false, updatable = false)
