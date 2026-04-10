@@ -24,6 +24,8 @@ dependencies {
     // querydsl
     kapt("com.querydsl:querydsl-apt::jakarta")
 
+    testImplementation(project(":apps:commerce-streamer"))
+
     // test-fixtures
     testImplementation(testFixtures(project(":modules:jpa")))
     testImplementation(testFixtures(project(":modules:kafka")))

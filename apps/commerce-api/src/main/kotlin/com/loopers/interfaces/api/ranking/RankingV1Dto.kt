@@ -1,9 +1,39 @@
-package com.loopers.interfaces.api.product
+package com.loopers.interfaces.api.ranking
 
 import com.loopers.application.product.ProductInfo
+import com.loopers.application.ranking.ProductRankingFacade
 import java.time.ZonedDateTime
 
-class ProductV1Dto {
+class RankingV1Dto {
+    data class RankingPageResponse(
+        val items: List<RankingItemResponse>,
+        val page: Int,
+        val size: Int,
+        val totalCount: Long,
+        val totalPages: Int,
+    ) {
+        companion object {
+            fun from(info: ProductRankingFacade.RankingPageInfo) = RankingPageResponse(
+                items = info.items.map { RankingItemResponse.from(it) },
+                page = info.page,
+                size = info.size,
+                totalCount = info.totalCount,
+                totalPages = info.totalPages,
+            )
+        }
+    }
+
+    data class RankingItemResponse(
+        val rank: Long,
+        val product: ProductResponse,
+    ) {
+        companion object {
+            fun from(info: ProductRankingFacade.RankingProductInfo) = RankingItemResponse(
+                rank = info.rank,
+                product = ProductResponse.from(info.product),
+            )
+        }
+    }
 
     data class ProductResponse(
         val id: Long,
@@ -16,8 +46,6 @@ class ProductV1Dto {
         val brand: BrandResponse,
         val createdAt: ZonedDateTime,
         val updatedAt: ZonedDateTime,
-        val weeklyRank: Long?,
-        val monthlyRank: Long?,
     ) {
         data class BrandResponse(
             val id: Long,
@@ -41,8 +69,6 @@ class ProductV1Dto {
                 ),
                 createdAt = info.createdAt,
                 updatedAt = info.updatedAt,
-                weeklyRank = info.weeklyRank,
-                monthlyRank = info.monthlyRank,
             )
         }
     }

@@ -19,6 +19,7 @@ class SecurityConfig {
                     .requestMatchers("/api/v1/users/**").permitAll()
                     .requestMatchers("/api/v1/brands/**").permitAll()
                     .requestMatchers("/api/v1/products/**").permitAll()
+                    .requestMatchers("/api/v1/rankings/**").permitAll()
                     .requestMatchers("/api/v1/orders/**").permitAll()
                     .requestMatchers("/api/v1/queue/**").permitAll()
                     .requestMatchers("/api/v1/coupons/**").permitAll()

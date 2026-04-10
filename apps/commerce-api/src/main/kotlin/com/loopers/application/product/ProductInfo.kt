@@ -15,6 +15,8 @@ data class ProductInfo(
     val brand: BrandInfo,
     val createdAt: ZonedDateTime,
     val updatedAt: ZonedDateTime,
+    val weeklyRank: Long? = null,
+    val monthlyRank: Long? = null,
 ) {
     companion object {
         fun from(model: ProductModel, brand: BrandInfo) = ProductInfo(

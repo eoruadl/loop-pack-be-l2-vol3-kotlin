@@ -23,3 +23,7 @@ dependencies {
     testImplementation(testFixtures(project(":modules:kafka")))
     testImplementation(testFixtures(project(":modules:redis")))
 }
+
+tasks.named<Jar>("jar") {
+    enabled = true
+}
