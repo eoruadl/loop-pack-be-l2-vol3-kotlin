@@ -62,30 +62,34 @@ class ProductCacheManager(
     }
 
     fun getDetail(id: Long): ProductInfo? {
-        val json = defaultRedisTemplate.opsForValue().get(detailKey(id)) ?: return null
+        val json = runCatching { defaultRedisTemplate.opsForValue().get(detailKey(id)) }.getOrNull() ?: return null
         val info = runCatching { objectMapper.readValue(json, ProductInfo::class.java) }.getOrNull() ?: return null
-        val cachedLikeCount = defaultRedisTemplate.opsForValue().get(likeCountKey(id))?.toLongOrNull()
+        val cachedLikeCount = runCatching { defaultRedisTemplate.opsForValue().get(likeCountKey(id)) }.getOrNull()?.toLongOrNull()
         return if (cachedLikeCount != null) info.copy(likeCount = cachedLikeCount) else info
     }
 
     fun putDetail(info: ProductInfo) {
         val json = objectMapper.writeValueAsString(info)
-        masterRedisTemplate.opsForValue().set(detailKey(info.id), json, jitter(DETAIL_TTL, DETAIL_JITTER))
-        masterRedisTemplate.opsForValue().set(
-            likeCountKey(info.id),
-            info.likeCount.toString(),
-            jitter(LIKE_COUNT_TTL, LIKE_COUNT_JITTER),
-        )
+        runCatching {
+            masterRedisTemplate.opsForValue().set(detailKey(info.id), json, jitter(DETAIL_TTL, DETAIL_JITTER))
+            masterRedisTemplate.opsForValue().set(
+                likeCountKey(info.id),
+                info.likeCount.toString(),
+                jitter(LIKE_COUNT_TTL, LIKE_COUNT_JITTER),
+            )
+        }
     }
 
     fun evictDetail(id: Long) {
-        masterRedisTemplate.delete(detailKey(id))
-        masterRedisTemplate.delete(likeCountKey(id))
+        runCatching {
+            masterRedisTemplate.delete(detailKey(id))
+            masterRedisTemplate.delete(likeCountKey(id))
+        }
     }
 
     fun getList(brandId: Long?, sort: Sort, page: Int): Page<ProductInfo>? {
         val key = listKey(brandId, sort, page)
-        val json = defaultRedisTemplate.opsForValue().get(key) ?: return null
+        val json = runCatching { defaultRedisTemplate.opsForValue().get(key) }.getOrNull() ?: return null
         return runCatching {
             val cached = objectMapper.readValue(json, object : TypeReference<CachedPage<ProductInfo>>() {})
             PageImpl(cached.content, PageRequest.of(cached.page, cached.size, sort), cached.totalElements)
@@ -107,13 +111,17 @@ class ProductCacheManager(
         } else {
             LIST_JITTER_LONG
         }
-        masterRedisTemplate.opsForValue().set(key, json, jitter(listTtl(sort), jitterOffset))
+        runCatching {
+            masterRedisTemplate.opsForValue().set(key, json, jitter(listTtl(sort), jitterOffset))
+        }
     }
 
     fun evictAllList() {
-        val keys = masterRedisTemplate.keys("$LIST_PREFIX*")
-        if (!keys.isNullOrEmpty()) {
-            masterRedisTemplate.delete(keys)
+        runCatching {
+            val keys = masterRedisTemplate.keys("$LIST_PREFIX*")
+            if (!keys.isNullOrEmpty()) {
+                masterRedisTemplate.delete(keys)
+            }
         }
     }
 

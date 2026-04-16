@@ -32,6 +32,7 @@ class OrderEventOutboxService(
                 OrderEventMessage.OrderEventItem(
                     productId = item.productId,
                     quantity = item.quantity.value,
+                    unitPrice = item.unitPrice.value,
                 )
             },
         )

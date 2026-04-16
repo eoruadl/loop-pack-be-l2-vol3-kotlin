@@ -14,5 +14,6 @@ data class OrderEventMessage(
     data class OrderEventItem(
         val productId: Long,
         val quantity: Long,
+        val unitPrice: Long,
     )
 }

@@ -8,8 +8,8 @@ import org.springframework.stereotype.Repository
 class EventHandledRepositoryImpl(
     private val eventHandledJpaRepository: EventHandledJpaRepository,
 ) : EventHandledRepository {
-    override fun existsByEventId(eventId: String): Boolean =
-        eventHandledJpaRepository.existsByEventId(eventId)
+    override fun existsByEventIdAndHandlerName(eventId: String, handlerName: String): Boolean =
+        eventHandledJpaRepository.existsByEventIdAndHandlerName(eventId, handlerName)
 
     override fun save(model: EventHandledModel): EventHandledModel =
         eventHandledJpaRepository.save(model)

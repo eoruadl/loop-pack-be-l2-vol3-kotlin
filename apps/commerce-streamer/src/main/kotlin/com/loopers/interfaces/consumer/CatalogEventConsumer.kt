@@ -20,6 +20,10 @@ class CatalogEventConsumer(
     @Value("\${app.kafka.topics.catalog-events:catalog-events}")
     private val topicName: String,
 ) {
+    companion object {
+        const val HANDLER_NAME = "catalog-metrics-consumer"
+    }
+
     private val log = LoggerFactory.getLogger(javaClass)
 
     @KafkaListener(
@@ -32,13 +36,13 @@ class CatalogEventConsumer(
         acknowledgment: Acknowledgment,
     ) {
         val event = objectMapper.readValue(record.value(), CatalogEventMessage::class.java)
-        if (eventHandledService.isHandled(event.eventId)) {
+        if (eventHandledService.isHandled(event.eventId, HANDLER_NAME)) {
             acknowledgment.acknowledge()
             return
         }
 
         productMetricsService.apply(event)
-        eventHandledService.markHandled(event.eventId, topicName)
+        eventHandledService.markHandled(event.eventId, topicName, HANDLER_NAME)
         acknowledgment.acknowledge()
         log.info("catalog event handled - eventId={}, type={}, productId={}", event.eventId, event.eventType, event.productId)
     }

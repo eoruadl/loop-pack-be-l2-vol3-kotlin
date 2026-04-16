@@ -8,10 +8,10 @@ class EventHandledService(
     private val eventHandledRepository: EventHandledRepository,
 ) {
     @Transactional(readOnly = true)
-    fun isHandled(eventId: String): Boolean =
-        eventHandledRepository.existsByEventId(eventId)
+    fun isHandled(eventId: String, handlerName: String): Boolean =
+        eventHandledRepository.existsByEventIdAndHandlerName(eventId, handlerName)
 
     @Transactional
-    fun markHandled(eventId: String, topic: String): EventHandledModel =
-        eventHandledRepository.save(EventHandledModel(eventId = eventId, topic = topic))
+    fun markHandled(eventId: String, topic: String, handlerName: String): EventHandledModel =
+        eventHandledRepository.save(EventHandledModel(eventId = eventId, topic = topic, handlerName = handlerName))
 }

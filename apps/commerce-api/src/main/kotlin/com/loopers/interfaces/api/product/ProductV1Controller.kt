@@ -3,6 +3,7 @@ package com.loopers.interfaces.api.product
 import com.loopers.application.catalog.CatalogEventOutboxCommand
 import com.loopers.application.catalog.CatalogEventOutboxService
 import com.loopers.application.product.ProductFacade
+import com.loopers.application.ranking.ProductRankingFacade
 import com.loopers.application.useraction.UserActionEvent
 import com.loopers.domain.useraction.UserActionTargetType
 import com.loopers.domain.useraction.UserActionType
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/v1/products")
 class ProductV1Controller(
     private val productFacade: ProductFacade,
+    private val productRankingFacade: ProductRankingFacade,
     private val applicationEventPublisher: ApplicationEventPublisher,
     private val catalogEventOutboxService: CatalogEventOutboxService,
 ) : ProductV1ApiSpec {
@@ -48,6 +50,7 @@ class ProductV1Controller(
     @GetMapping("/{productId}")
     override fun getProductById(@PathVariable productId: Long): ApiResponse<ProductV1Dto.ProductResponse> =
         productFacade.getProductById(productId)
+            .let(productRankingFacade::attachWeeklyMonthlyRanks)
             .also {
                 applicationEventPublisher.publishEvent(
                     UserActionEvent(

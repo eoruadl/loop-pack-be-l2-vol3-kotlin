@@ -69,8 +69,8 @@ class ProductMetricsServiceTest {
                 userId = 1L,
                 occurredAt = ZonedDateTime.now(),
                 items = listOf(
-                    OrderEventMessage.OrderEventItem(productId = 1L, quantity = 2L),
-                    OrderEventMessage.OrderEventItem(productId = 2L, quantity = 1L),
+                    OrderEventMessage.OrderEventItem(productId = 1L, quantity = 2L, unitPrice = 10_000L),
+                    OrderEventMessage.OrderEventItem(productId = 2L, quantity = 1L, unitPrice = 20_000L),
                 ),
             )
         )

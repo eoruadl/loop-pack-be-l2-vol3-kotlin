@@ -20,6 +20,10 @@ class OrderEventConsumer(
     @Value("\${app.kafka.topics.order-events:order-events}")
     private val topicName: String,
 ) {
+    companion object {
+        const val HANDLER_NAME = "order-metrics-consumer"
+    }
+
     private val log = LoggerFactory.getLogger(javaClass)
 
     @KafkaListener(
@@ -32,13 +36,13 @@ class OrderEventConsumer(
         acknowledgment: Acknowledgment,
     ) {
         val event = objectMapper.readValue(record.value(), OrderEventMessage::class.java)
-        if (eventHandledService.isHandled(event.eventId)) {
+        if (eventHandledService.isHandled(event.eventId, HANDLER_NAME)) {
             acknowledgment.acknowledge()
             return
         }
 
         productMetricsService.applySales(event)
-        eventHandledService.markHandled(event.eventId, topicName)
+        eventHandledService.markHandled(event.eventId, topicName, HANDLER_NAME)
         acknowledgment.acknowledge()
         log.info("order event handled - eventId={}, type={}, orderId={}", event.eventId, event.eventType, event.orderId)
     }

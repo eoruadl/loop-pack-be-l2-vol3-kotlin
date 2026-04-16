@@ -5,6 +5,7 @@ import com.loopers.application.brand.BrandInfo
 import com.loopers.application.catalog.CatalogEventOutboxCommand
 import com.loopers.application.product.ProductFacade
 import com.loopers.application.product.ProductInfo
+import com.loopers.application.ranking.ProductRankingFacade
 import com.loopers.application.useraction.UserActionEvent
 import com.loopers.domain.useraction.UserActionTargetType
 import com.loopers.domain.useraction.UserActionType
@@ -23,9 +24,15 @@ import java.time.ZonedDateTime
 class ProductV1ControllerTest {
 
     private val productFacade: ProductFacade = mockk()
+    private val productRankingFacade: ProductRankingFacade = mockk()
     private val applicationEventPublisher: ApplicationEventPublisher = mockk(relaxed = true)
     private val catalogEventOutboxService: CatalogEventOutboxService = mockk(relaxed = true)
-    private val controller = ProductV1Controller(productFacade, applicationEventPublisher, catalogEventOutboxService)
+    private val controller = ProductV1Controller(
+        productFacade,
+        productRankingFacade,
+        applicationEventPublisher,
+        catalogEventOutboxService,
+    )
 
     @Test
     fun `상품 목록 조회 시 유저 액션 이벤트를 발행한다`() {
@@ -46,6 +53,7 @@ class ProductV1ControllerTest {
     @Test
     fun `상품 상세 조회 시 유저 액션 이벤트를 발행한다`() {
         every { productFacade.getProductById(1L) } returns createProductInfo()
+        every { productRankingFacade.attachWeeklyMonthlyRanks(any()) } answers { firstArg() }
 
         controller.getProductById(1L)
 
